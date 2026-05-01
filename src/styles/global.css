@@ -70,8 +70,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   position: relative;
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   gap: 8px;
   padding: 8px;
   min-height: 0;
@@ -79,57 +79,73 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 }
 
 .side-controls {
-  position: absolute;
-  top: 50%;
-  z-index: 25;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  transform: translateY(-50%);
+  flex-direction: row;
+  gap: 6px;
+  min-width: 0;
 }
-.side-controls-left { left: 8px; }
-.side-controls-right { right: 8px; }
+.side-controls-left {
+  grid-column: 1;
+  grid-row: 3;
+  justify-content: flex-start;
+}
+.side-controls-right {
+  grid-column: 2;
+  grid-row: 3;
+  justify-content: flex-end;
+}
 .side-controls button {
-  min-width: 74px;
-  padding: 9px 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.38);
+  min-width: 0;
+  padding: 8px 10px;
+  white-space: normal;
+  line-height: 1.15;
 }
 
 @media (min-width: 900px) and (orientation: landscape) {
   .layout {
-    grid-template-columns: 180px 1fr 220px;
+    grid-template-columns: minmax(140px, 180px) 92px minmax(0, 1fr) 92px minmax(160px, 220px);
     grid-template-rows: 1fr;
     gap: 16px;
     padding: 16px;
   }
   .panel-left  { grid-column: 1; }
-  .stage       { grid-column: 2; }
-  .panel-right { grid-column: 3; }
+  .side-controls-left {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    flex-direction: column;
+  }
+  .stage       { grid-column: 3; }
+  .side-controls-right {
+    grid-column: 4;
+    grid-row: 1;
+    align-self: center;
+    flex-direction: column;
+  }
+  .panel-right { grid-column: 5; }
   .touch-pad   { display: none !important; }
-  .side-controls-left { left: 212px; }
-  .side-controls-right { right: 252px; }
+  .side-controls button { width: 100%; }
 }
 
 @media (max-width: 560px) {
-  .side-controls { gap: 6px; }
-  .side-controls-left { left: 6px; }
-  .side-controls-right { right: 6px; }
+  .side-controls { gap: 5px; }
   .side-controls button {
-    min-width: 62px;
-    max-width: 76px;
-    padding: 7px 8px;
+    flex: 1 1 0;
+    padding: 7px 6px;
     font-size: 12px;
-    line-height: 1.15;
   }
 }
 
 .stage {
   position: relative;
+  grid-column: 1 / -1;
+  grid-row: 2;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .board-canvas {
@@ -139,8 +155,9 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   image-rendering: pixelated;
   touch-action: none;
   display: block;
+  max-width: 100%;
+  max-height: 100%;
   box-shadow: 0 0 0 1px rgba(255,255,255,.03), 0 8px 30px rgba(0,0,0,.6);
-  transform: translateY(18px);
 }
 .mouse-drag-enabled .board-canvas { cursor: grab; }
 .mouse-drag-enabled .board-canvas:active { cursor: grabbing; }
@@ -148,8 +165,15 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .panel-left, .panel-right {
   display: flex;
   gap: 8px;
-  position: relative;
-  z-index: 6;
+  min-width: 0;
+}
+.panel-left {
+  grid-column: 1;
+  grid-row: 1;
+}
+.panel-right {
+  grid-column: 2;
+  grid-row: 1;
 }
 @media (min-width: 900px) and (orientation: landscape) {
   .panel-left, .panel-right {
@@ -190,6 +214,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .score-cell .value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .touch-pad {
+  grid-column: 1 / -1;
+  grid-row: 4;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
@@ -200,6 +226,33 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .touch-pad button {
   padding: 12px 0;
   font-size: 14px;
+}
+
+@media (min-width: 900px) and (orientation: landscape) {
+  .panel-left {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .side-controls-left {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    flex-direction: column;
+  }
+  .stage {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .side-controls-right {
+    grid-column: 4;
+    grid-row: 1;
+    align-self: center;
+    flex-direction: column;
+  }
+  .panel-right {
+    grid-column: 5;
+    grid-row: 1;
+  }
 }
 
 .overlay {
