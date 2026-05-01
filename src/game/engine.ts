@@ -404,6 +404,79 @@ function hardDrop(state: GameState): StepResult {
   return { state: locked, events: [{ type: 'harddrop', cells }, ...events] };
 }
 
+function overlapsCurrent(state: GameState, piece: Piece): boolean {
+  if (!state.current) return false;
+  const occupied = new Set(pieceCells(state.current).map(([x, y]) => `${x},${y}`));
+  return pieceCells(piece).some(([x, y]) => occupied.has(`${x},${y}`));
+}
+
+function placeExternalPiece(
+  state: GameState,
+  source: 'hold' | 'next',
+  type: PieceType,
+  x: number,
+  visibleY: number
+): StepResult {
+  if (source === 'hold' && state.hold !== type) return { state, events: [] };
+  if (source === 'next' && state.queue[0] !== type) return { state, events: [] };
+
+  const piece: Piece = {
+    type,
+    rotation: 0,
+    x: Math.trunc(x),
+    y: Math.trunc(visibleY) + (TOTAL_H - BOARD_H)
+  };
+
+  if (collides(state.board, piece) || overlapsCurrent(state, piece)) {
+    return { state, events: [] };
+  }
+
+  const locked = lockPiece(state.board, piece);
+  const { board: cleared, cleared: rows } = clearLines(locked);
+  const clear: ClearResult = { lines: rows.length, tspin: 'none', perfectClear: rows.length > 0 && isPerfectClear(cleared) };
+  const { points, b2bAfter } = scoreFor(clear, state.level, state.backToBack);
+  const newCombo = rows.length > 0 ? state.combo + 1 : -1;
+  const comboBonus = newCombo > 0 ? 50 * newCombo * state.level : 0;
+  const totalLines = state.lines + rows.length;
+  const newLevel = Math.max(state.level, Math.floor(totalLines / 10) + 1);
+
+  let next: GameState = {
+    ...state,
+    board: cleared,
+    hold: source === 'hold' ? null : state.hold,
+    queue: source === 'next' ? state.queue.slice(1) : state.queue,
+    score: state.score + points + comboBonus,
+    lines: totalLines,
+    level: newLevel,
+    combo: newCombo,
+    backToBack: b2bAfter,
+    lastClear: clear,
+    clearAnim: rows.length > 0 ? { rows, t: 0 } : null,
+    softDropping: false
+  };
+
+  if (source === 'next') {
+    next = refillQueue(next);
+  }
+
+  next = setOnGround(next);
+
+  const events: GameEvent[] = [{ type: 'lock' }];
+  if (rows.length > 0) {
+    events.push({
+      type: 'clear',
+      lines: rows.length,
+      tspin: 'none',
+      b2b: false,
+      combo: Math.max(0, newCombo),
+      perfectClear: clear.perfectClear
+    });
+  }
+  if (newLevel !== state.level) events.push({ type: 'levelup', level: newLevel });
+
+  return { state: next, events };
+}
+
 function holdPiece(state: GameState): StepResult {
   if (!state.current || !state.canHold) return { state, events: [] };
   const cur = state.current.type;
@@ -527,6 +600,8 @@ export function reduce(state: GameState, action: Action): StepResult {
       const r = tryMoveTo(state, action.x);
       return { state: r.state, events: r.moved ? [{ type: 'move' }] : [] };
     }
+    case 'placePiece':
+      return placeExternalPiece(state, action.source, action.piece, action.x, action.y);
     case 'rotate': {
       const r = tryRotate(state, action.dir);
       return { state: r.state, events: r.rotated ? [{ type: 'rotate' }] : [] };

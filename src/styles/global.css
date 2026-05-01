@@ -52,15 +52,14 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .app-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 10px;
   padding: 8px 14px;
   border-bottom: 1px solid var(--line);
   background: linear-gradient(180deg, var(--bg-2), var(--bg));
 }
 .app-header h1 { font-size: 16px; margin: 0; letter-spacing: 1px; }
-.app-header .right { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.app-header .toggle.active {
+.toggle.active {
   background: var(--accent);
   border-color: var(--accent);
   color: #07111f;
@@ -68,6 +67,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 }
 
 .layout {
+  position: relative;
   flex: 1;
   display: grid;
   grid-template-columns: 1fr;
@@ -75,6 +75,24 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   gap: 8px;
   padding: 8px;
   min-height: 0;
+  overflow: hidden;
+}
+
+.side-controls {
+  position: absolute;
+  top: 50%;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transform: translateY(-50%);
+}
+.side-controls-left { left: 8px; }
+.side-controls-right { right: 8px; }
+.side-controls button {
+  min-width: 74px;
+  padding: 9px 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.38);
 }
 
 @media (min-width: 900px) and (orientation: landscape) {
@@ -88,6 +106,21 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .stage       { grid-column: 2; }
   .panel-right { grid-column: 3; }
   .touch-pad   { display: none !important; }
+  .side-controls-left { left: 212px; }
+  .side-controls-right { right: 252px; }
+}
+
+@media (max-width: 560px) {
+  .side-controls { gap: 6px; }
+  .side-controls-left { left: 6px; }
+  .side-controls-right { right: 6px; }
+  .side-controls button {
+    min-width: 62px;
+    max-width: 76px;
+    padding: 7px 8px;
+    font-size: 12px;
+    line-height: 1.15;
+  }
 }
 
 .stage {
@@ -115,6 +148,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .panel-left, .panel-right {
   display: flex;
   gap: 8px;
+  position: relative;
+  z-index: 6;
 }
 @media (min-width: 900px) and (orientation: landscape) {
   .panel-left, .panel-right {
@@ -136,6 +171,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   margin-bottom: 6px;
 }
 .mini canvas { display: block; width: 100%; height: auto; }
+.draggable-mini {
+  cursor: grab;
+  touch-action: none;
+}
+.draggable-mini:active { cursor: grabbing; }
 
 .score-grid {
   display: grid;
@@ -243,6 +283,21 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   pointer-events: none;
   z-index: 30;
   animation: pop .8s ease-out forwards;
+}
+
+.floating-piece {
+  position: fixed;
+  z-index: 40;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 12px 20px rgba(0,0,0,.45));
+}
+.floating-piece-cell {
+  position: absolute;
+  border: 1px solid rgba(7, 9, 26, .7);
+  box-shadow:
+    inset 2px 2px 0 rgba(255,255,255,.18),
+    inset -2px -2px 0 rgba(0,0,0,.28);
 }
 @keyframes pop {
   0%   { opacity: 0; transform: translate(-50%, -8px) scale(.9); }

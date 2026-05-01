@@ -63,6 +63,7 @@ export type Action =
   | { type: 'tick'; dt: number }
   | { type: 'move'; dx: number }
   | { type: 'moveTo'; x: number }
+  | { type: 'placePiece'; source: 'hold' | 'next'; piece: PieceType; x: number; y: number }
   | { type: 'softDrop'; on: boolean }
   | { type: 'hardDrop' }
   | { type: 'rotate'; dir: -1 | 1 }
