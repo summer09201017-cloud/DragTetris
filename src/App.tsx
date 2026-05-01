@@ -252,6 +252,8 @@ export default function App() {
       </header>
 
       <div className="layout">
+        <Hud state={state} />
+
         <div className="side-controls side-controls-left">
           <button type="button" onClick={togglePause} disabled={state.status === 'gameover'}>
             {state.status === 'paused' ? '繼續' : '暫停'}
@@ -274,7 +276,6 @@ export default function App() {
 
         <div className="panel-left">
           <HoldBox piece={state.hold} locked={!state.canHold} onPieceDragStart={startTrayDrag} />
-          <Hud state={state} />
         </div>
 
         <div className={mouseDragEnabled ? 'stage mouse-drag-enabled' : 'stage'} ref={stageRef}>
@@ -283,7 +284,7 @@ export default function App() {
             className="board-canvas"
             aria-label="俄羅斯方塊棋盤"
             style={{
-              height: `min(100%, calc((100dvh - 220px) * ${boardHeightScale}))`,
+              height: `min(100%, calc((100dvh - 170px) * ${boardHeightScale}))`,
               width: 'auto',
               maxWidth: '100%',
               aspectRatio: `${BOARD_W} / ${BOARD_H}`

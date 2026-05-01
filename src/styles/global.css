@@ -54,11 +54,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 8px 14px;
+  padding: 5px 10px;
   border-bottom: 1px solid var(--line);
   background: linear-gradient(180deg, var(--bg-2), var(--bg));
 }
-.app-header h1 { font-size: 16px; margin: 0; letter-spacing: 1px; }
+.app-header h1 { font-size: 14px; margin: 0; letter-spacing: 1px; }
 .toggle.active {
   background: var(--accent);
   border-color: var(--accent);
@@ -70,10 +70,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   position: relative;
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: minmax(68px, 92px) minmax(0, 1fr) auto auto;
-  gap: 8px;
-  padding: 8px;
+  grid-template-columns: 52px minmax(0, 1fr) 52px;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 6px;
+  padding: 6px;
   min-height: 0;
   overflow: hidden;
 }
@@ -83,48 +83,60 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   flex-direction: row;
   gap: 6px;
   min-width: 0;
+  grid-column: 1 / -1;
+  grid-row: 3;
 }
 .side-controls-left {
-  grid-column: 1;
-  grid-row: 3;
+  justify-self: start;
+  width: calc(50% - 4px);
   justify-content: flex-start;
 }
 .side-controls-right {
-  grid-column: 2;
-  grid-row: 3;
+  justify-self: end;
+  width: calc(50% - 4px);
   justify-content: flex-end;
 }
 .side-controls button {
   min-width: 0;
-  padding: 8px 10px;
+  padding: 7px 8px;
   white-space: normal;
   line-height: 1.15;
 }
 
 @media (min-width: 900px) and (orientation: landscape) {
   .layout {
-    grid-template-columns: minmax(140px, 180px) 92px minmax(0, 1fr) 92px minmax(160px, 220px);
-    grid-template-rows: 1fr;
+    grid-template-columns: minmax(130px, 170px) minmax(0, 1fr) minmax(140px, 190px);
+    grid-template-rows: auto minmax(0, 1fr) auto;
     gap: 16px;
     padding: 16px;
   }
-  .panel-left  { grid-column: 1; }
+  .score-grid {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .panel-left  {
+    grid-column: 1;
+    grid-row: 2;
+  }
   .side-controls-left {
+    grid-column: 1 / 2;
+    grid-row: 3;
+    width: auto;
+  }
+  .stage {
     grid-column: 2;
-    grid-row: 1;
-    align-self: center;
-    flex-direction: column;
+    grid-row: 2;
   }
-  .stage       { grid-column: 3; }
   .side-controls-right {
-    grid-column: 4;
-    grid-row: 1;
-    align-self: center;
-    flex-direction: column;
+    grid-column: 3 / 4;
+    grid-row: 3;
+    width: auto;
   }
-  .panel-right { grid-column: 5; }
+  .panel-right {
+    grid-column: 3;
+    grid-row: 2;
+  }
   .touch-pad   { display: none !important; }
-  .side-controls button { width: 100%; }
 }
 
 @media (max-width: 560px) {
@@ -138,7 +150,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 .stage {
   position: relative;
-  grid-column: 1 / -1;
+  grid-column: 2;
   grid-row: 2;
   display: flex;
   align-items: center;
@@ -164,19 +176,20 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 .panel-left, .panel-right {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
   min-width: 0;
   min-height: 0;
-  max-height: 92px;
-  overflow: hidden;
+  overflow: visible;
 }
 .panel-left {
   grid-column: 1;
-  grid-row: 1;
+  grid-row: 2;
 }
 .panel-right {
-  grid-column: 2;
-  grid-row: 1;
+  grid-column: 3;
+  grid-row: 2;
 }
 @media (min-width: 900px) and (orientation: landscape) {
   .panel-left, .panel-right {
@@ -188,23 +201,22 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 6px;
+  padding: 4px;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
 .mini-title {
-  font-size: 11px;
-  letter-spacing: 1.5px;
+  font-size: 10px;
+  letter-spacing: .8px;
   color: var(--text-dim);
   text-transform: uppercase;
   margin-bottom: 4px;
 }
 .mini canvas { display: block; width: 100%; height: auto; }
-.panel-right .mini canvas {
-  aspect-ratio: 4 / 3 !important;
-  height: 52px;
-  width: 100%;
+.panel-left .mini,
+.panel-right .mini {
+  flex: 0 0 auto !important;
 }
 .draggable-mini {
   cursor: grab;
@@ -213,62 +225,42 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .draggable-mini:active { cursor: grabbing; }
 
 .score-grid {
+  grid-column: 1 / -1;
+  grid-row: 1;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(3, max-content);
+  justify-content: center;
+  gap: 4px;
   min-width: 0;
 }
-@media (min-width: 900px) and (orientation: landscape) {
-  .score-grid { grid-template-columns: 1fr; }
+.score-cell {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 5px;
+  min-width: 42px;
+  width: max-content;
+  text-align: center;
 }
-.score-cell { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px; min-width: 0; }
-.score-cell .label { color: var(--text-dim); font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; }
-.score-cell .value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.score-cell .label { color: var(--text-dim); font-size: 8px; letter-spacing: .5px; text-transform: uppercase; }
+.score-cell .value { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .touch-pad {
   grid-column: 1 / -1;
   grid-row: 4;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-  padding: 6px;
+  gap: 5px;
+  padding: 5px;
   border-top: 1px solid var(--line);
   background: var(--bg-2);
 }
 .touch-pad button {
-  padding: 12px 0;
+  padding: 10px 0;
   font-size: 14px;
 }
 
 @media (min-width: 900px) and (orientation: landscape) {
-  .panel-left {
-    grid-column: 1;
-    grid-row: 1;
-    max-height: none;
-    overflow: visible;
-  }
-  .side-controls-left {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: center;
-    flex-direction: column;
-  }
-  .stage {
-    grid-column: 3;
-    grid-row: 1;
-  }
-  .side-controls-right {
-    grid-column: 4;
-    grid-row: 1;
-    align-self: center;
-    flex-direction: column;
-  }
-  .panel-right {
-    grid-column: 5;
-    grid-row: 1;
-    max-height: none;
-    overflow: visible;
-  }
   .mini {
     padding: 8px;
   }
