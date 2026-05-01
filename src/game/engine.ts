@@ -40,8 +40,8 @@ function cloneBoard(b: Board): Board {
 }
 
 function spawnPiece(type: PieceType): Piece {
-  // x = 3 for all in a 10-wide board (centers 4-wide bounding box around col 3-6).
-  return { type, rotation: 0, x: 3, y: 0 };
+  const x = Math.floor((BOARD_W - 4) / 2);
+  return { type, rotation: 0, x, y: 0 };
 }
 
 function pieceCells(p: Piece): [number, number][] {

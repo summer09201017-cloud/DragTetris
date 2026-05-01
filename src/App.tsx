@@ -19,6 +19,7 @@ export default function App() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const boardWidthRatio = (BOARD_W / BOARD_H) * 1.3;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [audioStarted, setAudioStarted] = useState(false);
   const [mouseDragEnabled, setMouseDragEnabled] = useState(() => {
@@ -141,7 +142,7 @@ export default function App() {
             className="board-canvas"
             aria-label="俄羅斯方塊棋盤"
             style={{
-              width: 'min(100%, calc((100dvh - 220px) * 0.5))',
+              width: `min(100%, calc((100dvh - 220px) * ${boardWidthRatio}))`,
               aspectRatio: `${BOARD_W} / ${BOARD_H}`
             }}
           />

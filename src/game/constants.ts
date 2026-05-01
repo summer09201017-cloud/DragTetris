@@ -1,6 +1,6 @@
 import type { PieceType } from './types';
 
-export const BOARD_W = 10;
+export const BOARD_W = 8;
 export const BOARD_H = 20;
 // Hidden buffer rows above the visible board where pieces spawn.
 export const BUFFER_H = 2;
