@@ -71,7 +71,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: minmax(68px, 92px) minmax(0, 1fr) auto auto;
   gap: 8px;
   padding: 8px;
   min-height: 0;
@@ -166,6 +166,9 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   display: flex;
   gap: 8px;
   min-width: 0;
+  min-height: 0;
+  max-height: 92px;
+  overflow: hidden;
 }
 .panel-left {
   grid-column: 1;
@@ -185,16 +188,24 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 8px;
+  padding: 6px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 .mini-title {
   font-size: 11px;
   letter-spacing: 1.5px;
   color: var(--text-dim);
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .mini canvas { display: block; width: 100%; height: auto; }
+.panel-right .mini canvas {
+  aspect-ratio: 4 / 3 !important;
+  height: 52px;
+  width: 100%;
+}
 .draggable-mini {
   cursor: grab;
   touch-action: none;
@@ -205,13 +216,14 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
+  min-width: 0;
 }
 @media (min-width: 900px) and (orientation: landscape) {
   .score-grid { grid-template-columns: 1fr; }
 }
-.score-cell { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.score-cell { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px; min-width: 0; }
 .score-cell .label { color: var(--text-dim); font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; }
-.score-cell .value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.score-cell .value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .touch-pad {
   grid-column: 1 / -1;
@@ -232,6 +244,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .panel-left {
     grid-column: 1;
     grid-row: 1;
+    max-height: none;
+    overflow: visible;
   }
   .side-controls-left {
     grid-column: 2;
@@ -252,6 +266,15 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .panel-right {
     grid-column: 5;
     grid-row: 1;
+    max-height: none;
+    overflow: visible;
+  }
+  .mini {
+    padding: 8px;
+  }
+  .panel-right .mini canvas {
+    aspect-ratio: 1 / 2.6 !important;
+    height: auto;
   }
 }
 

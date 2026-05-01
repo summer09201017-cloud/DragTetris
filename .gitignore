@@ -7,3 +7,4 @@ dist-ssr
 *.tsbuildinfo
 *.log
 .claude
+layout-check.png
