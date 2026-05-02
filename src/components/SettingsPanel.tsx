@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { audio } from '../audio/AudioManager';
+import { BOARD_WIDTH_OPTIONS } from '../game/constants';
 
 interface Props {
   open: boolean;
+  boardWidth: number;
+  onBoardWidthChange: (width: number) => void;
   onClose: () => void;
 }
 
-export function SettingsPanel({ open, onClose }: Props) {
+export function SettingsPanel({ open, boardWidth, onBoardWidthChange, onClose }: Props) {
   const [s, setS] = useState(audio.getSettings());
 
   useEffect(() => {
@@ -19,6 +22,27 @@ export function SettingsPanel({ open, onClose }: Props) {
     <div className="settings" onClick={onClose}>
       <div className="card" onClick={(e) => e.stopPropagation()}>
         <h2>設定</h2>
+
+        <div className="field">
+          <label>
+            <span>棋盤欄數</span>
+            <span>{boardWidth} 欄</span>
+          </label>
+          <div className="segmented board-width-options" role="group" aria-label="棋盤欄數">
+            {BOARD_WIDTH_OPTIONS.map((width) => (
+              <button
+                key={width}
+                type="button"
+                className={boardWidth === width ? 'active' : ''}
+                aria-pressed={boardWidth === width}
+                onClick={() => onBoardWidthChange(width)}
+              >
+                {width} 欄
+              </button>
+            ))}
+          </div>
+          <p className="field-note">切換欄數會重新開始一局。</p>
+        </div>
 
         <div className="field">
           <label>

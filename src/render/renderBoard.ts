@@ -1,4 +1,4 @@
-import { BOARD_W, BOARD_H, BUFFER_H, COLORS } from '../game/constants';
+import { BOARD_H, BUFFER_H, COLORS } from '../game/constants';
 import { blocksOf } from '../game/pieces';
 import type { GameState, Piece, PieceType } from '../game/types';
 import { getGhost } from '../game/engine';
@@ -81,6 +81,7 @@ function drawPiece(ctx: CanvasRenderingContext2D, p: Piece, size: number, ghost 
 }
 
 export function renderBoard(canvas: HTMLCanvasElement, state: GameState): void {
+  const boardWidth = state.boardWidth;
   const dpr = window.devicePixelRatio || 1;
   const cssW = canvas.clientWidth;
   const cssH = canvas.clientHeight;
@@ -90,8 +91,8 @@ export function renderBoard(canvas: HTMLCanvasElement, state: GameState): void {
   }
   const ctx = canvas.getContext('2d')!;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const size = Math.floor(Math.min(cssW / BOARD_W, cssH / BOARD_H));
-  const w = size * BOARD_W;
+  const size = Math.floor(Math.min(cssW / boardWidth, cssH / BOARD_H));
+  const w = size * boardWidth;
   const h = size * BOARD_H;
   const ox = Math.floor((cssW - w) / 2);
   const oy = Math.floor((cssH - h) / 2);
@@ -104,11 +105,11 @@ export function renderBoard(canvas: HTMLCanvasElement, state: GameState): void {
 
   ctx.save();
   ctx.translate(ox, oy);
-  drawGrid(ctx, BOARD_W, BOARD_H, size);
+  drawGrid(ctx, boardWidth, BOARD_H, size);
 
   // Settled blocks
   for (let y = BUFFER_H; y < state.board.length; y++) {
-    for (let x = 0; x < BOARD_W; x++) {
+    for (let x = 0; x < boardWidth; x++) {
       const cell = state.board[y][x];
       if (cell !== 0) {
         drawBlock(ctx, x, y - BUFFER_H, size, COLORS[cell as PieceType]);

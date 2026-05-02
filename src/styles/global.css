@@ -321,6 +321,27 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   margin-bottom: 4px;
 }
 .settings .field input[type="range"] { width: 100%; accent-color: var(--accent); }
+.settings .segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.settings .segmented button {
+  padding: 8px 6px;
+  border-radius: 6px;
+}
+.settings .segmented button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #07111f;
+  font-weight: 700;
+}
+.settings .field-note {
+  margin: 6px 0 0;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.4;
+}
 .settings .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
 
 .help {

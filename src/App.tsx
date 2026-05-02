@@ -8,7 +8,7 @@ import { HoldBox, NextBox } from './components/Mini';
 import { SettingsPanel } from './components/SettingsPanel';
 import { TouchPad } from './components/TouchPad';
 import { audio } from './audio/AudioManager';
-import { BOARD_W, BOARD_H, COLORS } from './game/constants';
+import { BOARD_H, COLORS } from './game/constants';
 import { blocksOf } from './game/pieces';
 import type { PieceType } from './game/types';
 import { registerPwa } from './pwa';
@@ -32,10 +32,10 @@ function pieceBounds(type: PieceType) {
   };
 }
 
-function boardPointFromClient(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
+function boardPointFromClient(canvas: HTMLCanvasElement, clientX: number, clientY: number, boardWidth: number) {
   const rect = canvas.getBoundingClientRect();
-  const cell = Math.max(8, Math.floor(Math.min(rect.width / BOARD_W, rect.height / BOARD_H)));
-  const boardW = cell * BOARD_W;
+  const cell = Math.max(8, Math.floor(Math.min(rect.width / boardWidth, rect.height / BOARD_H)));
+  const boardW = cell * boardWidth;
   const boardH = cell * BOARD_H;
   const ox = Math.max(0, (rect.width - boardW) / 2);
   const oy = Math.max(0, (rect.height - boardH) / 2);
@@ -45,18 +45,18 @@ function boardPointFromClient(canvas: HTMLCanvasElement, clientX: number, client
   if (x < 0 || y < 0 || x >= boardW || y >= boardH) return null;
 
   return {
-    col: clamp(Math.floor(x / cell), 0, BOARD_W - 1),
+    col: clamp(Math.floor(x / cell), 0, boardWidth - 1),
     row: clamp(Math.floor(y / cell), 0, BOARD_H - 1)
   };
 }
 
-function dropOrigin(type: PieceType, col: number, row: number) {
+function dropOrigin(type: PieceType, col: number, row: number, boardWidth: number) {
   const bounds = pieceBounds(type);
   const anchorX = Math.round((bounds.minX + bounds.maxX) / 2);
   const anchorY = Math.round((bounds.minY + bounds.maxY) / 2);
 
   return {
-    x: clamp(col - anchorX, -bounds.minX, BOARD_W - 1 - bounds.maxX),
+    x: clamp(col - anchorX, -bounds.minX, boardWidth - 1 - bounds.maxX),
     y: clamp(row - anchorY, -bounds.minY, BOARD_H - 1 - bounds.maxY)
   };
 }
@@ -143,8 +143,8 @@ export default function App() {
   const cellSize = useCallback(() => {
     const c = canvasRef.current;
     if (!c) return 24;
-    return Math.floor(Math.min(c.clientWidth / BOARD_W, c.clientHeight / BOARD_H));
-  }, []);
+    return Math.floor(Math.min(c.clientWidth / state.boardWidth, c.clientHeight / BOARD_H));
+  }, [state.boardWidth]);
 
   const getCurrentPiece = useCallback(() => useGame.getState().state.current, []);
 
@@ -153,6 +153,7 @@ export default function App() {
     boardRef: canvasRef,
     dispatch,
     enabled: state.status === 'playing',
+    boardWidth: state.boardWidth,
     cellSize,
     mouseDragEnabled,
     getCurrentPiece
@@ -180,10 +181,10 @@ export default function App() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const point = boardPointFromClient(canvas, clientX, clientY);
+    const point = boardPointFromClient(canvas, clientX, clientY, state.boardWidth);
     if (!point) return;
 
-    const origin = dropOrigin(drag.type, point.col, point.row);
+    const origin = dropOrigin(drag.type, point.col, point.row, state.boardWidth);
     dispatch({
       type: 'placePiece',
       source: drag.source,
@@ -191,7 +192,7 @@ export default function App() {
       x: origin.x,
       y: origin.y
     });
-  }, [dispatch]);
+  }, [dispatch, state.boardWidth]);
 
   useEffect(() => {
     if (!trayDrag) return;
@@ -287,7 +288,7 @@ export default function App() {
               height: `min(100%, calc((100dvh - 170px) * ${boardHeightScale}))`,
               width: 'auto',
               maxWidth: '100%',
-              aspectRatio: `${BOARD_W} / ${BOARD_H}`
+              aspectRatio: `${state.boardWidth} / ${BOARD_H}`
             }}
           />
           {toast && <div className="toast">{toast}</div>}
@@ -323,7 +324,12 @@ export default function App() {
         <TouchPad dispatch={dispatch} />
       </div>
 
-      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsPanel
+        open={settingsOpen}
+        boardWidth={state.boardWidth}
+        onBoardWidthChange={(width) => dispatch({ type: 'setBoardWidth', width })}
+        onClose={() => setSettingsOpen(false)}
+      />
       {trayDrag && <FloatingPiece drag={trayDrag} />}
     </div>
   );

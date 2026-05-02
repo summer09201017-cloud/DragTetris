@@ -21,6 +21,7 @@ export interface ClearResult {
 export type GameStatus = 'ready' | 'playing' | 'paused' | 'gameover';
 
 export interface GameState {
+  boardWidth: number;
   board: Board;
   current: Piece | null;
   hold: PieceType | null;
@@ -71,6 +72,7 @@ export type Action =
   | { type: 'pause' }
   | { type: 'pauseToggle' }
   | { type: 'resume' }
+  | { type: 'setBoardWidth'; width: number }
   | { type: 'restart' };
 
 export interface StepResult {

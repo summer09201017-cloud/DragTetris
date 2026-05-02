@@ -1,12 +1,13 @@
 import {
-  BOARD_W,
+  DEFAULT_BOARD_W,
   BOARD_H,
   TOTAL_H,
   LOCK_DELAY_MS,
   MAX_LOCK_RESETS,
   SOFT_DROP_FACTOR,
   gravitySecondsPerCell,
-  linesPerLevel
+  linesPerLevel,
+  normalizeBoardWidth
 } from './constants';
 import { blocksOf } from './pieces';
 import { kicksFor, rotateIndex } from './srs';
@@ -27,10 +28,14 @@ import type {
 
 // ────────────────────────────── helpers
 
-function emptyBoard(): Board {
+function boardWidthOf(b: Board): number {
+  return b[0]?.length ?? DEFAULT_BOARD_W;
+}
+
+function emptyBoard(boardWidth: number): Board {
   const b: Board = [];
   for (let y = 0; y < TOTAL_H; y++) {
-    b.push(new Array<Cell>(BOARD_W).fill(0));
+    b.push(new Array<Cell>(boardWidth).fill(0));
   }
   return b;
 }
@@ -39,8 +44,8 @@ function cloneBoard(b: Board): Board {
   return b.map(row => row.slice());
 }
 
-function spawnPiece(type: PieceType): Piece {
-  const x = Math.floor((BOARD_W - 4) / 2);
+function spawnPiece(type: PieceType, boardWidth: number): Piece {
+  const x = Math.floor((boardWidth - 4) / 2);
   return { type, rotation: 0, x, y: 0 };
 }
 
@@ -49,8 +54,9 @@ function pieceCells(p: Piece): [number, number][] {
 }
 
 function collides(b: Board, p: Piece): boolean {
+  const boardWidth = boardWidthOf(b);
   for (const [x, y] of pieceCells(p)) {
-    if (x < 0 || x >= BOARD_W || y >= TOTAL_H) return true;
+    if (x < 0 || x >= boardWidth || y >= TOTAL_H) return true;
     if (y < 0) continue; // above the visible+buffer top is OK during spawn
     if (b[y][x] !== 0) return true;
   }
@@ -58,9 +64,10 @@ function collides(b: Board, p: Piece): boolean {
 }
 
 function lockPiece(b: Board, p: Piece): Board {
+  const boardWidth = boardWidthOf(b);
   const next = cloneBoard(b);
   for (const [x, y] of pieceCells(p)) {
-    if (y >= 0 && y < TOTAL_H && x >= 0 && x < BOARD_W) {
+    if (y >= 0 && y < TOTAL_H && x >= 0 && x < boardWidth) {
       next[y][x] = p.type;
     }
   }
@@ -68,6 +75,7 @@ function lockPiece(b: Board, p: Piece): Board {
 }
 
 function clearLines(b: Board): { board: Board; cleared: number[] } {
+  const boardWidth = boardWidthOf(b);
   const cleared: number[] = [];
   const rows: Cell[][] = [];
   for (let y = 0; y < TOTAL_H; y++) {
@@ -78,14 +86,14 @@ function clearLines(b: Board): { board: Board; cleared: number[] } {
     }
   }
   while (rows.length < TOTAL_H) {
-    rows.unshift(new Array<Cell>(BOARD_W).fill(0));
+    rows.unshift(new Array<Cell>(boardWidth).fill(0));
   }
   return { board: rows, cleared };
 }
 
 function isPerfectClear(b: Board): boolean {
   for (let y = 0; y < TOTAL_H; y++) {
-    for (let x = 0; x < BOARD_W; x++) {
+    for (let x = 0; x < boardWidthOf(b); x++) {
       if (b[y][x] !== 0) return false;
     }
   }
@@ -110,6 +118,7 @@ export function getGhost(state: GameState): Piece | null {
 
 function detectTSpin(board: Board, piece: Piece, lastWasRotate: boolean, lastKickIdx: number): LockTSpin {
   if (!lastWasRotate || piece.type !== 'T') return 'none';
+  const boardWidth = boardWidthOf(board);
   // 4 corners of T's 3x3 bounding box (at local 0,0 / 2,0 / 0,2 / 2,2)
   const corners = [
     [piece.x + 0, piece.y + 0],
@@ -118,7 +127,7 @@ function detectTSpin(board: Board, piece: Piece, lastWasRotate: boolean, lastKic
     [piece.x + 2, piece.y + 2]
   ];
   const filled = corners.map(([x, y]) => {
-    if (x < 0 || x >= BOARD_W || y < 0 || y >= TOTAL_H) return true;
+    if (x < 0 || x >= boardWidth || y < 0 || y >= TOTAL_H) return true;
     return board[y][x] !== 0;
   });
   const total = filled.filter(Boolean).length;
@@ -179,13 +188,15 @@ function scoreFor(clear: ClearResult, level: number, b2bBefore: boolean): { poin
 
 // ────────────────────────────── state
 
-export function createInitialState(seed = Date.now() & 0x7fffffff): GameState {
+export function createInitialState(boardWidth: number = DEFAULT_BOARD_W, seed = Date.now() & 0x7fffffff): GameState {
+  const normalizedWidth = normalizeBoardWidth(boardWidth);
   const { bag, state: rng1 } = shuffleBag(seed);
   const { bag: bag2, state: rng2 } = shuffleBag(rng1);
   const queue = [...bag.slice(1), ...bag2].slice(0, 6);
   return {
-    board: emptyBoard(),
-    current: spawnPiece(bag[0]),
+    boardWidth: normalizedWidth,
+    board: emptyBoard(normalizedWidth),
+    current: spawnPiece(bag[0], normalizedWidth),
     hold: null,
     canHold: true,
     queue,
@@ -229,7 +240,7 @@ function spawnNext(state: GameState): { state: GameState; gameOver: boolean } {
   const filled = refillQueue(state);
   const next = filled.queue[0];
   const queue = filled.queue.slice(1);
-  const piece = spawnPiece(next);
+  const piece = spawnPiece(next, filled.boardWidth);
   const gameOver = collides(filled.board, piece);
   return {
     state: {
@@ -486,7 +497,7 @@ function holdPiece(state: GameState): StepResult {
     const filled = refillQueue(state);
     const next = filled.queue[0];
     const queue = filled.queue.slice(1);
-    const piece = spawnPiece(next);
+    const piece = spawnPiece(next, filled.boardWidth);
     if (collides(filled.board, piece)) {
       events.push({ type: 'gameover' });
       return {
@@ -512,7 +523,7 @@ function holdPiece(state: GameState): StepResult {
     };
   }
 
-  const piece = spawnPiece(state.hold);
+  const piece = spawnPiece(state.hold, state.boardWidth);
   if (collides(state.board, piece)) {
     events.push({ type: 'gameover' });
     return {
@@ -577,13 +588,14 @@ function tickGravity(state: GameState, dtMs: number): StepResult {
 }
 
 export function reduce(state: GameState, action: Action): StepResult {
-  if (state.status === 'gameover' && action.type !== 'restart') {
+  if (state.status === 'gameover' && action.type !== 'restart' && action.type !== 'setBoardWidth') {
     return { state, events: [] };
   }
   if (
     state.status === 'paused' &&
     action.type !== 'pauseToggle' &&
     action.type !== 'resume' &&
+    action.type !== 'setBoardWidth' &&
     action.type !== 'restart'
   ) {
     return { state, events: [] };
@@ -625,10 +637,15 @@ export function reduce(state: GameState, action: Action): StepResult {
       };
     case 'resume':
       return { state: { ...state, status: 'playing' }, events: [] };
+    case 'setBoardWidth': {
+      const boardWidth = normalizeBoardWidth(action.width);
+      if (boardWidth === state.boardWidth) return { state, events: [] };
+      return { state: createInitialState(boardWidth), events: [] };
+    }
     case 'restart':
-      return { state: createInitialState(), events: [] };
+      return { state: createInitialState(state.boardWidth), events: [] };
   }
 }
 
 // Public helpers re-exported for renderer
-export { collides, ghostY, BOARD_W, BOARD_H, TOTAL_H, linesPerLevel };
+export { collides, ghostY, BOARD_H, TOTAL_H, linesPerLevel };

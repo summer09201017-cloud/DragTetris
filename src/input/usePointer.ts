@@ -1,5 +1,5 @@
 import { useEffect, useRef, RefObject } from 'react';
-import { BOARD_H, BOARD_W, BUFFER_H } from '../game/constants';
+import { BOARD_H, BUFFER_H } from '../game/constants';
 import { blocksOf } from '../game/pieces';
 import type { Action, Piece } from '../game/types';
 
@@ -8,6 +8,7 @@ interface PointerOptions {
   boardRef?: RefObject<HTMLCanvasElement>;
   dispatch: (a: Action) => void;
   enabled: boolean;
+  boardWidth: number;
   cellSize: () => number;
   mouseDragEnabled?: boolean;
   getCurrentPiece?: () => Piece | null;
@@ -43,6 +44,7 @@ export function usePointer({
   boardRef,
   dispatch,
   enabled,
+  boardWidth,
   cellSize,
   mouseDragEnabled = false,
   getCurrentPiece
@@ -77,7 +79,7 @@ export function usePointer({
       const boardEl = boardRef?.current ?? el;
       const rect = boardEl.getBoundingClientRect();
       const cs = Math.max(8, cellSize());
-      const boardPixelW = BOARD_W * cs;
+      const boardPixelW = boardWidth * cs;
       const boardPixelH = BOARD_H * cs;
       const ox = Math.max(0, (rect.width - boardPixelW) / 2);
       const oy = Math.max(0, (rect.height - boardPixelH) / 2);
@@ -87,7 +89,7 @@ export function usePointer({
       if (x < 0 || y < 0 || x >= boardPixelW || y >= boardPixelH) return null;
 
       return {
-        col: Math.max(0, Math.min(BOARD_W - 1, Math.floor(x / cs))),
+        col: Math.max(0, Math.min(boardWidth - 1, Math.floor(x / cs))),
         row: Math.max(0, Math.min(BOARD_H - 1, Math.floor(y / cs)))
       };
     };
@@ -293,5 +295,5 @@ export function usePointer({
       el.removeEventListener('pointercancel', onPointerCancel);
       el.removeEventListener('contextmenu', onContextMenu);
     };
-  }, [enabled, targetRef, boardRef, cellSize, mouseDragEnabled, getCurrentPiece]);
+  }, [enabled, targetRef, boardRef, boardWidth, cellSize, mouseDragEnabled, getCurrentPiece]);
 }

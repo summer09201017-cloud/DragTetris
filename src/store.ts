@@ -1,7 +1,27 @@
 import { create } from 'zustand';
 import { createInitialState, reduce } from './game/engine';
+import { DEFAULT_BOARD_W, normalizeBoardWidth } from './game/constants';
 import type { Action, GameEvent, GameState } from './game/types';
 import { audio } from './audio/AudioManager';
+
+const BOARD_WIDTH_STORAGE_KEY = 'tetris.boardWidth';
+
+function loadBoardWidth(): number {
+  try {
+    const raw = window.localStorage.getItem(BOARD_WIDTH_STORAGE_KEY);
+    return raw == null ? DEFAULT_BOARD_W : normalizeBoardWidth(Number(raw));
+  } catch {
+    return DEFAULT_BOARD_W;
+  }
+}
+
+function saveBoardWidth(width: number): void {
+  try {
+    window.localStorage.setItem(BOARD_WIDTH_STORAGE_KEY, String(normalizeBoardWidth(width)));
+  } catch {
+    // localStorage can be unavailable in hardened browser modes.
+  }
+}
 
 interface Store {
   state: GameState;
@@ -50,10 +70,11 @@ function handleEvents(events: GameEvent[], setToast: (m: string | null) => void)
 }
 
 export const useGame = create<Store>((set, get) => ({
-  state: createInitialState(),
+  state: createInitialState(loadBoardWidth()),
   toast: null,
   dispatch: (a) => {
     const { state: newState, events } = reduce(get().state, a);
+    if (a.type === 'setBoardWidth') saveBoardWidth(newState.boardWidth);
     handleEvents(events, (m) => get().setToast(m));
     set({ state: newState });
   },

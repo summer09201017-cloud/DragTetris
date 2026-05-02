@@ -1,10 +1,17 @@
 import type { PieceType } from './types';
 
-export const BOARD_W = 8;
+export const BOARD_WIDTH_OPTIONS = [7, 8, 12] as const;
+export type BoardWidth = (typeof BOARD_WIDTH_OPTIONS)[number];
+export const DEFAULT_BOARD_W: BoardWidth = 8;
+export const BOARD_W = DEFAULT_BOARD_W;
 export const BOARD_H = 20;
 // Hidden buffer rows above the visible board where pieces spawn.
 export const BUFFER_H = 2;
 export const TOTAL_H = BOARD_H + BUFFER_H;
+
+export function normalizeBoardWidth(width: number): BoardWidth {
+  return BOARD_WIDTH_OPTIONS.includes(width as BoardWidth) ? width as BoardWidth : DEFAULT_BOARD_W;
+}
 
 export const COLORS: Record<PieceType | 'G', string> = {
   I: '#22d3ee',
