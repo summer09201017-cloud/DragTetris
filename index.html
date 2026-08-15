@@ -14,5 +14,39 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <script>
+  // play-stats 三層匿名計數(skill play-stats-lite / play-stats-dwell)。
+  // 零個資:無 cookie、無 IP 存檔、無帳號;離線時靜默跳過,不影響遊戲。
+  // ⚠ 閘門用「黑名單」只擋本機開發 —— 絕不可寫成 hostname 白名單:
+  //    平台白名單=每次搬家都會靜靜斷流,而搬家的人不會想到回來改這一行(0813 大廳/約拿、0815 但以理)。
+  window.psPing = function (key, t) {
+    try {
+      if (['localhost', '127.0.0.1', ''].includes(location.hostname)) return;
+      var u = 'https://hfpc-play-stats.summer09201017.workers.dev/api/ping?g=' + key + (t ? '&t=' + t : '');
+      if (navigator.sendBeacon) navigator.sendBeacon(u); else fetch(u, { mode: 'no-cors' });
+    } catch (_) {}
+  };
+  // ① 開啟:10 分鐘內同一台裝置只算一次
+  try {
+    var psK = 'ps-last-dragtetris';
+    var psLast = parseInt(localStorage.getItem(psK) || '0', 10);
+    if (Date.now() - psLast > 600000) { localStorage.setItem(psK, String(Date.now())); window.psPing('dragtetris'); }
+  } catch (_) { window.psPing('dragtetris'); }
+  // ② 真實停留:開頁 → 第一次離開回報一發 -dwell 帶秒數。
+  //    ★ 只送這一發:手機鎖屏時常只送得出佇列第一個 beacon,同一刻連發兩個會有一發被丟掉。
+  (function () {
+    var _dwT0 = Date.now(), _dwSent = false;
+    function _dwLeave() {
+      if (_dwSent) return; _dwSent = true;
+      var sec = Math.round((Date.now() - _dwT0) / 1000);
+      if (sec < 3 || sec > 1800) return;   // 誤觸不算、掛整天的背景分頁也不算
+      window.psPing('dragtetris-dwell', sec);
+    }
+    addEventListener('pagehide', _dwLeave);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') _dwLeave();
+    });
+  })();
+</script>
+</body>
 </html>
