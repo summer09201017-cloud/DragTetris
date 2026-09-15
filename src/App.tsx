@@ -10,8 +10,11 @@ import { TouchPad } from './components/TouchPad';
 import { audio } from './audio/AudioManager';
 import { BOARD_H, COLORS } from './game/constants';
 import { blocksOf } from './game/pieces';
-import type { PieceType } from './game/types';
+import type { GameMode, PieceType } from './game/types';
+import { getRecord, scoresCount } from './records';
 import { registerPwa } from './pwa';
+
+const LOBBY_URL = 'https://hfpc-bible-games.summer09201017.workers.dev/';
 
 type TraySource = 'hold' | 'next';
 type TrayDrag = { source: TraySource; type: PieceType; pointerId: number; x: number; y: number };
@@ -93,8 +96,11 @@ function FloatingPiece({ drag }: { drag: TrayDrag }) {
 export default function App() {
   const state = useGame((s) => s.state);
   const toast = useGame((s) => s.toast);
+  const records = useGame((s) => s.records);
+  const beaten = useGame((s) => s.beaten);
   const dispatch = useGame((s) => s.dispatch);
   const tick = useGame((s) => s.tick);
+  const record = getRecord(records, state.mode, state.boardWidth);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -110,9 +116,37 @@ export default function App() {
     }
   });
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   // Register service worker once
   useEffect(() => {
     try { registerPwa(); } catch { /* dev mode */ }
+  }, []);
+
+  // ⛶ 全螢幕(game-must-haves)。iOS Safari 沒有 Element.requestFullscreen ⇒
+  // 按鈕在那裡會失敗,所以只在瀏覽器真的支援時才顯示這顆鈕。
+  const fullscreenSupported = typeof document !== 'undefined' && document.fullscreenEnabled === true;
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(document.fullscreenElement != null);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    try {
+      if (document.fullscreenElement) void document.exitFullscreen();
+      else void document.documentElement.requestFullscreen();
+    } catch {
+      // 使用者手勢外呼叫 / 不支援 ⇒ 靜默,不要弄壞遊戲。
+    }
+  }, []);
+
+  // ← 返回大廳:離開前先問一次,不然玩到一半誤觸就整局沒了。
+  const backToLobby = useCallback(() => {
+    const playing = useGame.getState().state.status === 'playing';
+    if (playing && !window.confirm('離開這一關回大廳?本局進度不會保留。')) return;
+    window.location.href = LOBBY_URL;
   }, []);
 
   // Game loop
@@ -249,11 +283,25 @@ export default function App() {
   return (
     <div className="app" onPointerDownCapture={startAudio} onKeyDownCapture={startAudio}>
       <header className="app-header">
+        <button type="button" className="header-btn" onClick={backToLobby} title="返回大廳">
+          ← 大廳
+        </button>
         <h1>俄羅斯方塊 TETRIS</h1>
+        {fullscreenSupported && (
+          <button
+            type="button"
+            className="header-btn"
+            onClick={toggleFullscreen}
+            aria-pressed={isFullscreen}
+            title={isFullscreen ? '離開全螢幕' : '全螢幕'}
+          >
+            {isFullscreen ? '⛶ 離開' : '⛶'}
+          </button>
+        )}
       </header>
 
       <div className="layout">
-        <Hud state={state} />
+        <Hud state={state} record={record} />
 
         <div className="side-controls side-controls-left">
           <button type="button" onClick={togglePause} disabled={state.status === 'gameover'}>
@@ -308,9 +356,26 @@ export default function App() {
             <div className="overlay">
               <div className="panel">
                 <h2>GAME OVER</h2>
+                {beaten && (beaten.score || beaten.lines || beaten.level || beaten.maxCombo) && (
+                  <p className="new-best">🎉 新紀錄!</p>
+                )}
                 <p>分數 {state.score.toLocaleString()} ・ 等級 {state.level} ・ 行數 {state.lines}</p>
+                {scoresCount(state.mode) ? (
+                  <dl className="record-list">
+                    <div><dt>最高分</dt><dd>{record.score.toLocaleString()}{beaten?.score && ' ✨'}</dd></div>
+                    <div><dt>最多行</dt><dd>{record.lines}{beaten?.lines && ' ✨'}</dd></div>
+                    <div><dt>最高等級</dt><dd>{record.level}{beaten?.level && ' ✨'}</dd></div>
+                    <div><dt>最長 Combo</dt><dd>{record.maxCombo}{beaten?.maxCombo && ' ✨'}</dd></div>
+                    <div><dt>Perfect Clear</dt><dd>{record.pcCount} 次</dd></div>
+                    <div><dt>已玩局數</dt><dd>{record.games}</dd></div>
+                  </dl>
+                ) : (
+                  <p className="field-note">自由建造是沙盒模式,不列入紀錄。</p>
+                )}
+                <p className="field-note">紀錄依「模式 × 欄數」分開計算(目前:{state.boardWidth} 欄)。</p>
                 <div className="row">
                   <button type="button" onClick={restart}>再玩一局</button>
+                  <button type="button" onClick={backToLobby}>返回大廳</button>
                 </div>
               </div>
             </div>
@@ -327,7 +392,9 @@ export default function App() {
       <SettingsPanel
         open={settingsOpen}
         boardWidth={state.boardWidth}
+        mode={state.mode}
         onBoardWidthChange={(width) => dispatch({ type: 'setBoardWidth', width })}
+        onModeChange={(mode: GameMode) => dispatch({ type: 'setMode', mode })}
         onClose={() => setSettingsOpen(false)}
       />
       {trayDrag && <FloatingPiece drag={trayDrag} />}

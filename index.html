@@ -49,11 +49,65 @@
   })();
 </script>
 
-<!-- 🏷 版本號徽章(0831 VT1 批次;game-must-haves 第七件)。
-     ★ 本站沒有 sw.js ⇒ 靜態版號:改版時要手動 bump 這行(vN+日期)。 -->
-<div id="appVerBadge" style="position:fixed;right:6px;bottom:4px;font-size:11px;line-height:1;opacity:.55;z-index:2147483000;pointer-events:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);font-family:system-ui,sans-serif">🏷️ 版本 v1(2026-08-31)</div>
+<!-- 🏷 版號兩件套（game-must-haves 第七件）：徽章 + 點得開的改版簡歷。
+     ★ 版號和簡歷都在 APP_VERSIONS 這一处，徽章文字由程式帶出來。
+       舊版把版號寫死在徽章的 innerText，改版忘了改它就會默默漂移（畫面說 v1、程式已經是 v2）。
+     ★ 本站沒有手寫 sw.js（vite-plugin-pwa 自動產）⇒ 改版時只要在 APP_VERSIONS 最前面插一筆。 -->
+<!-- ★ 徽章是「標籤」不是「按鈕」：pointer-events:none 不可或缺。
+     0915 實測：改成可點之後它蓋住了手機下方 ⟳ 與 ▼ 兩顆鈕的下緣，
+     拇指點下半部會跳出簡歷而不是操作遊戲。
+     （elementFromPoint 量出來的；目視與截圖都看不出來。）
+     ⇒ 簡歷改從「設定」面板開，那裡有空間、不搶操作。 -->
+<div id="appVerBadge" aria-hidden="true"
+     style="position:fixed;right:6px;bottom:4px;font-size:11px;line-height:1;opacity:.55;z-index:2147483000;pointer-events:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);font-family:system-ui,sans-serif"></div>
+<style>
+  /* ★ hidden 屬性的 display:none 來自瀏覽器預設樣式表，inline style 會贏過它。
+     不寫這一行的話，這層全螢幕遮罩從一開頁就蓋在上面、攒下所有點擊。
+     （0915 真瀏覽器驗收抓到；36 項單元測試全綠也看不到這種錯。） */
+  #appVerSheet[hidden] { display: none !important; }
+</style>
+<div id="appVerSheet" hidden
+     style="position:fixed;inset:0;z-index:2147483001;background:rgba(4,8,20,.78);display:flex;align-items:center;justify-content:center;padding:16px;font-family:system-ui,'Noto Sans TC',sans-serif">
+  <div style="max-width:420px;width:100%;max-height:70vh;overflow:auto;background:#1a2247;border:1px solid #2a356b;border-radius:12px;padding:14px 16px;color:#e6eaff">
+    <h3 style="margin:0 0 8px;font-size:15px">改版簡歷</h3>
+    <ol id="appVerList" style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.75"></ol>
+    <button type="button" id="appVerClose"
+            style="margin-top:12px;width:100%;min-height:40px;font:inherit;color:#e6eaff;background:#2a356b;border:1px solid #3a4a8b;border-radius:8px;cursor:pointer">關閉</button>
+  </div>
+</div>
 <script>
-;(function(){var b=document.getElementById('appVerBadge');if(!b)return;b.style.transition='opacity .8s';setTimeout(function(){b.style.opacity='0';setTimeout(function(){b.style.display='none'},900)},10000)})();
+;(function () {
+  // 最新的放最前面。改版只要在這裡插一筆，徽章會自己跟上。
+  var APP_VERSIONS = [
+    { v: 'v2', d: '2026-09-15', t: '三種拖曳規則（經典重力 / 塞縫 / 自由建造）、最高分與個人紀錄、返回大廳與全螢幕鈕、完賽統計打點、引擎單元測試 36 項' },
+    { v: 'v1', d: '2026-08-31', t: '版號徽章、使用統計匯入、棋盤欄數可選 7 / 8 / 12' }
+  ];
+  var badge = document.getElementById('appVerBadge');
+  var sheet = document.getElementById('appVerSheet');
+  var list  = document.getElementById('appVerList');
+  var close = document.getElementById('appVerClose');
+  if (!badge || !sheet || !list || !close) return;
+
+  var latest = APP_VERSIONS[0];
+  badge.textContent = '🏷️ 版本 ' + latest.v + '（' + latest.d + '）';
+  list.innerHTML = APP_VERSIONS.map(function (r) {
+    var esc = function (x) { return String(x).replace(/[&<>]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]; }); };
+    return '<li><b>' + esc(r.v) + '</b>（' + esc(r.d) + '）：' + esc(r.t) + '</li>';
+  }).join('');
+
+  function open()  { sheet.hidden = false; }
+  function shut()  { sheet.hidden = true; }
+  // 給設定面板（React）叫的入口。
+  window.__openVersionSheet = open;
+  window.__appVersion = latest.v + '（' + latest.d + '）';
+  close.addEventListener('click', shut);
+  sheet.addEventListener('click', function (e) { if (e.target === sheet) shut(); });
+  addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) shut(); });
+
+  // 遞減淡出，10 秒後變得很淡（不拿掉，還看得到版號）。
+  badge.style.transition = 'opacity .8s';
+  setTimeout(function () { badge.style.opacity = '.2'; }, 10000);
+})();
 </script>
 </body>
 </html>

@@ -17,6 +17,7 @@ import type {
   Board,
   Cell,
   GameEvent,
+  GameMode,
   GameState,
   Piece,
   PieceType,
@@ -188,12 +189,17 @@ function scoreFor(clear: ClearResult, level: number, b2bBefore: boolean): { poin
 
 // ────────────────────────────── state
 
-export function createInitialState(boardWidth: number = DEFAULT_BOARD_W, seed = Date.now() & 0x7fffffff): GameState {
+export function createInitialState(
+  boardWidth: number = DEFAULT_BOARD_W,
+  seed = Date.now() & 0x7fffffff,
+  mode: GameMode = 'gravity'
+): GameState {
   const normalizedWidth = normalizeBoardWidth(boardWidth);
   const { bag, state: rng1 } = shuffleBag(seed);
   const { bag: bag2, state: rng2 } = shuffleBag(rng1);
   const queue = [...bag.slice(1), ...bag2].slice(0, 6);
   return {
+    mode,
     boardWidth: normalizedWidth,
     board: emptyBoard(normalizedWidth),
     current: spawnPiece(bag[0], normalizedWidth),
@@ -205,6 +211,8 @@ export function createInitialState(boardWidth: number = DEFAULT_BOARD_W, seed = 
     lines: 0,
     level: 1,
     combo: -1,
+    maxCombo: 0,
+    pcCount: 0,
     backToBack: false,
     status: 'playing',
     lastClear: null,
@@ -368,6 +376,8 @@ function lockAndClear(state: GameState, hardCells = 0): StepResult {
     lines: totalLines,
     level: newLevel,
     combo: newCombo,
+    maxCombo: Math.max(state.maxCombo, newCombo),
+    pcCount: state.pcCount + (pc ? 1 : 0),
     backToBack: b2bAfter,
     lastClear: clear,
     gravityAcc: 0,
@@ -415,6 +425,26 @@ function hardDrop(state: GameState): StepResult {
   return { state: locked, events: [{ type: 'harddrop', cells }, ...events] };
 }
 
+/**
+ * 這個方塊有沒有「站在東西上」——至少一格的正下方是地板或既有方塊。
+ * classic 模式的托盤拖曳放置要過這一關;creative 模式跳過。
+ * ★ 刻意只要求「一格有支撐」而不是「整片貼合」:那正是本作獨有的
+ *   「把 S/Z/L 塞進凹角、掛在突出物下面」的策略深度,拿掉就跟一般俄羅斯方塊一樣了。
+ */
+function hasSupport(b: Board, p: Piece): boolean {
+  const boardWidth = boardWidthOf(b);
+  const occupied = new Set(pieceCells(p).map(([x, y]) => `${x},${y}`));
+  for (const [x, y] of pieceCells(p)) {
+    if (x < 0 || x >= boardWidth) continue;
+    const below = y + 1;
+    if (below >= TOTAL_H) return true;            // 踩在地板上
+    if (occupied.has(`${x},${below}`)) continue;  // 下面是自己的另一格,不算支撐
+    if (below < 0) continue;
+    if (b[below][x] !== 0) return true;           // 下面有既有方塊
+  }
+  return false;
+}
+
 function overlapsCurrent(state: GameState, piece: Piece): boolean {
   if (!state.current) return false;
   const occupied = new Set(pieceCells(state.current).map(([x, y]) => `${x},${y}`));
@@ -431,7 +461,7 @@ function placeExternalPiece(
   if (source === 'hold' && state.hold !== type) return { state, events: [] };
   if (source === 'next' && state.queue[0] !== type) return { state, events: [] };
 
-  const piece: Piece = {
+  let piece: Piece = {
     type,
     rotation: 0,
     x: Math.trunc(x),
@@ -441,6 +471,21 @@ function placeExternalPiece(
   if (collides(state.board, piece) || overlapsCurrent(state, piece)) {
     return { state, events: [] };
   }
+
+  // 🎯 三種模式在這裡分岔(2026-09-15 使用者拍板)。
+  if (state.mode === 'gravity') {
+    // 經典重力:落點只決定「哪一欄、從哪裡開始掉」,之後自動落到底。
+    // ⚠ 必須連現役方塊一起避開,否則會穿過它 —— overlapsCurrent 每一步都要問。
+    while (true) {
+      const below = { ...piece, y: piece.y + 1 };
+      if (collides(state.board, below) || overlapsCurrent(state, below)) break;
+      piece = below;
+    }
+  } else if (state.mode === 'support' && !hasSupport(state.board, piece)) {
+    // 塞縫:不自動下墜,但不准憑空懸浮。
+    return { state, events: [] };
+  }
+  // creative:放哪就哪,不檢查。
 
   const locked = lockPiece(state.board, piece);
   const { board: cleared, cleared: rows } = clearLines(locked);
@@ -460,6 +505,8 @@ function placeExternalPiece(
     lines: totalLines,
     level: newLevel,
     combo: newCombo,
+    maxCombo: Math.max(state.maxCombo, newCombo),
+    pcCount: state.pcCount + (clear.perfectClear ? 1 : 0),
     backToBack: b2bAfter,
     lastClear: clear,
     clearAnim: rows.length > 0 ? { rows, t: 0 } : null,
@@ -588,7 +635,12 @@ function tickGravity(state: GameState, dtMs: number): StepResult {
 }
 
 export function reduce(state: GameState, action: Action): StepResult {
-  if (state.status === 'gameover' && action.type !== 'restart' && action.type !== 'setBoardWidth') {
+  if (
+    state.status === 'gameover' &&
+    action.type !== 'restart' &&
+    action.type !== 'setBoardWidth' &&
+    action.type !== 'setMode'
+  ) {
     return { state, events: [] };
   }
   if (
@@ -596,6 +648,7 @@ export function reduce(state: GameState, action: Action): StepResult {
     action.type !== 'pauseToggle' &&
     action.type !== 'resume' &&
     action.type !== 'setBoardWidth' &&
+    action.type !== 'setMode' &&
     action.type !== 'restart'
   ) {
     return { state, events: [] };
@@ -640,12 +693,16 @@ export function reduce(state: GameState, action: Action): StepResult {
     case 'setBoardWidth': {
       const boardWidth = normalizeBoardWidth(action.width);
       if (boardWidth === state.boardWidth) return { state, events: [] };
-      return { state: createInitialState(boardWidth), events: [] };
+      return { state: createInitialState(boardWidth, undefined, state.mode), events: [] };
+    }
+    case 'setMode': {
+      if (action.mode === state.mode) return { state, events: [] };
+      return { state: createInitialState(state.boardWidth, undefined, action.mode), events: [] };
     }
     case 'restart':
-      return { state: createInitialState(state.boardWidth), events: [] };
+      return { state: createInitialState(state.boardWidth, undefined, state.mode), events: [] };
   }
 }
 
 // Public helpers re-exported for renderer
-export { collides, ghostY, BOARD_H, TOTAL_H, linesPerLevel };
+export { collides, ghostY, hasSupport, BOARD_H, TOTAL_H, linesPerLevel };

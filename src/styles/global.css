@@ -58,7 +58,54 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   border-bottom: 1px solid var(--line);
   background: linear-gradient(180deg, var(--bg-2), var(--bg));
 }
-.app-header h1 { font-size: 14px; margin: 0; letter-spacing: 1px; }
+.app-header h1 { font-size: 14px; margin: 0; letter-spacing: 1px; flex: 1; text-align: center; }
+
+/* ← 大廳 / ⛶ 全螢幕:標題列兩端。刻意 min-height 40px —— 觸控目標下限。 */
+.header-btn {
+  padding: 6px 10px;
+  font-size: 13px;
+  min-height: 40px;
+  min-width: 44px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* 破紀錄中:HUD 的 BEST 格會亮起來,不必等到 GAME OVER 才知道 */
+.score-cell.best-live { color: var(--accent); }
+.score-cell.best-live .label { color: var(--accent); }
+
+.new-best {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 16px;
+  margin: 2px 0 6px;
+}
+
+.record-list {
+  margin: 8px 0;
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 14px;
+  background: rgba(0, 0, 0, .22);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.record-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.record-list dt { color: var(--text-dim); margin: 0; }
+.record-list dd { margin: 0; font-variant-numeric: tabular-nums; }
+
+/* 模式選擇:三檔名稱比欄數長,窄螢幕要讓它自己換行而不是溢出 */
+.segmented.mode-options { flex-wrap: wrap; }
+.wide-btn { width: 100%; min-height: 40px; }
+.about-field #settingsVer { font-variant-numeric: tabular-nums; }
+.segmented.mode-options button { flex: 1 1 auto; min-width: 84px; }
 .toggle.active {
   background: var(--accent);
   border-color: var(--accent);
@@ -140,6 +187,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 }
 
 @media (max-width: 560px) {
+  /* 四格在手機寬度擠不下 ⇒ 改成二×二，比卵裁字好讀 */
+  .score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .side-controls { gap: 5px; }
   .side-controls button {
     flex: 1 1 0;
@@ -228,8 +277,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   grid-column: 1 / -1;
   grid-row: 1;
   display: grid;
-  grid-template-columns: repeat(3, max-content);
+  /* 四格：SCORE / BEST / LEVEL / LINES。窄螢幕讓它自己換行成兩排二兩。 */
+  grid-template-columns: repeat(4, max-content);
   justify-content: center;
+  flex-wrap: wrap;
   gap: 4px;
   min-width: 0;
 }
