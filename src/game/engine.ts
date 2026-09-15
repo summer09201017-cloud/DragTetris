@@ -455,15 +455,19 @@ function placeExternalPiece(
   state: GameState,
   source: 'hold' | 'next',
   type: PieceType,
+  rotation: Rotation,
   x: number,
   visibleY: number
 ): StepResult {
   if (source === 'hold' && state.hold !== type) return { state, events: [] };
   if (source === 'next' && state.queue[0] !== type) return { state, events: [] };
 
+  // 朝向一律先正規化成 0..3：前端若送了 -1 或 4，直接當索引會拿到 undefined，
+  // 而 SHAPES[type][undefined] 會在 pieceCells 裡爆掉（靜默的那種，畫面直接白掉）。
+  const rot = ((((Math.trunc(rotation) || 0) % 4) + 4) % 4) as Rotation;
   let piece: Piece = {
     type,
-    rotation: 0,
+    rotation: rot,
     x: Math.trunc(x),
     y: Math.trunc(visibleY) + (TOTAL_H - BOARD_H)
   };
@@ -666,7 +670,9 @@ export function reduce(state: GameState, action: Action): StepResult {
       return { state: r.state, events: r.moved ? [{ type: 'move' }] : [] };
     }
     case 'placePiece':
-      return placeExternalPiece(state, action.source, action.piece, action.x, action.y);
+      return placeExternalPiece(
+        state, action.source, action.piece, action.rotation, action.x, action.y
+      );
     case 'rotate': {
       const r = tryRotate(state, action.dir);
       return { state: r.state, events: r.rotated ? [{ type: 'rotate' }] : [] };
@@ -690,17 +696,20 @@ export function reduce(state: GameState, action: Action): StepResult {
       };
     case 'resume':
       return { state: { ...state, status: 'playing' }, events: [] };
+    // ★ seed 一路傳下去:每日挑戰 / 指定題號重開一局必須是同一副牌,
+    //   否則「全世界同一題」不成立。seed 為 undefined(自由模式)時
+    //   createInitialState 會自己取時間當種子,行為跟以前一樣。
     case 'setBoardWidth': {
       const boardWidth = normalizeBoardWidth(action.width);
       if (boardWidth === state.boardWidth) return { state, events: [] };
-      return { state: createInitialState(boardWidth, undefined, state.mode), events: [] };
+      return { state: createInitialState(boardWidth, action.seed, state.mode), events: [] };
     }
     case 'setMode': {
       if (action.mode === state.mode) return { state, events: [] };
-      return { state: createInitialState(state.boardWidth, undefined, action.mode), events: [] };
+      return { state: createInitialState(state.boardWidth, action.seed, action.mode), events: [] };
     }
     case 'restart':
-      return { state: createInitialState(state.boardWidth, undefined, state.mode), events: [] };
+      return { state: createInitialState(state.boardWidth, action.seed, state.mode), events: [] };
   }
 }
 

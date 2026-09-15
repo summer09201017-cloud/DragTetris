@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createInitialState, reduce, hasSupport, collides, TOTAL_H, BOARD_H } from './engine';
 import { blocksOf } from './pieces';
-import type { Board, GameMode, GameState, PieceType } from './types';
+import type { Board, GameMode, GameState, PieceType, Rotation } from './types';
 
 const BUFFER = TOTAL_H - BOARD_H;
 
@@ -47,7 +47,7 @@ function bottomRowOf(type: PieceType, visibleRow: number) {
 function dropNext(state: GameState, col: number, visibleRow: number) {
   const piece = state.queue[0];
   const o = clampOrigin(piece, col, visibleRow, state.boardWidth);
-  return reduce(state, { type: 'placePiece', source: 'next', piece, x: o.x, y: o.y });
+  return reduce(state, { type: 'placePiece', source: 'next', piece, rotation: 0, x: o.x, y: o.y });
 }
 
 // ───────────────────────────────────────── 隨機與初始狀態
@@ -158,7 +158,7 @@ describe('托盤拖曳放置 — 三種模式', () => {
     const targetRow = BOARD_H - 5;
     const o = clampOrigin(type, 2, targetRow, s.boardWidth);
     s = fill(s, o.x + 1, bottomRowOf(type, o.y) + 1);
-    const { state: after } = reduce(s, { type: 'placePiece', source: 'next', piece: type, x: o.x, y: o.y });
+    const { state: after } = reduce(s, { type: 'placePiece', source: 'next', piece: type, rotation: 0, x: o.x, y: o.y });
     expect(after).not.toBe(s);
   });
 
@@ -166,7 +166,7 @@ describe('托盤拖曳放置 — 三種模式', () => {
     const s = mk('support');
     const type = s.queue[0];
     const o = clampOrigin(type, 2, BOARD_H - 5, s.boardWidth);
-    const { state: after } = reduce(s, { type: 'placePiece', source: 'next', piece: type, x: o.x, y: o.y });
+    const { state: after } = reduce(s, { type: 'placePiece', source: 'next', piece: type, rotation: 0, x: o.x, y: o.y });
     expect(after).toBe(s);
   });
 
@@ -185,7 +185,7 @@ describe('托盤拖曳放置 — 三種模式', () => {
     const s = mk('gravity');
     const wrong: PieceType = s.queue[0] === 'I' ? 'O' : 'I';
     const { state: after } = reduce(s, {
-      type: 'placePiece', source: 'next', piece: wrong, x: 3, y: BOARD_H - 1
+      type: 'placePiece', source: 'next', piece: wrong, rotation: 0, x: 3, y: BOARD_H - 1
     });
     expect(after).toBe(s);
   });
@@ -194,8 +194,79 @@ describe('托盤拖曳放置 — 三種模式', () => {
     const s = mk('gravity');
     expect(s.hold).toBeNull();
     const { state: after } = reduce(s, {
-      type: 'placePiece', source: 'hold', piece: 'I', x: 3, y: BOARD_H - 1
+      type: 'placePiece', source: 'hold', piece: 'I', rotation: 0, x: 3, y: BOARD_H - 1
     });
+    expect(after).toBe(s);
+  });
+});
+
+// ───────────────────────────────────────── 托盤拖曳的朝向(F)
+
+describe('托盤拖曳可旋轉', () => {
+  /** 直接放一顆指定朝向的方塊,座標自己夾好。 */
+  function placeRot(state: GameState, rotation: Rotation, col: number, visibleRow: number) {
+    const type = state.queue[0];
+    const cells = blocksOf(type, rotation);
+    const maxX = Math.max(...cells.map(([x]) => x));
+    const maxY = Math.max(...cells.map(([, y]) => y));
+    const x = Math.max(0, Math.min(col, state.boardWidth - 1 - maxX));
+    const y = Math.max(0, Math.min(visibleRow, BOARD_H - 1 - maxY));
+    return reduce(state, { type: 'placePiece', source: 'next', piece: type, rotation, x, y });
+  }
+
+  it('直立的 I 放得下去,而且真的是直的(佔 4 列 1 欄)', () => {
+    const s = { ...mk('creative', 8), queue: ['I', ...mk().queue.slice(1)] as PieceType[] };
+    const { state: after } = placeRot(s, 1, 3, 8);
+    expect(after).not.toBe(s);
+    const cols = new Set<number>();
+    const rows = new Set<number>();
+    after.board.forEach((row, y) => row.forEach((c, x) => { if (c !== 0) { cols.add(x); rows.add(y); } }));
+    expect(cols.size).toBe(1);
+    expect(rows.size).toBe(4);
+  });
+
+  it('橫躺的 I 是 1 列 4 欄(跟直立的是不同結果)', () => {
+    const s = { ...mk('creative', 8), queue: ['I', ...mk().queue.slice(1)] as PieceType[] };
+    const { state: after } = placeRot(s, 0, 2, 8);
+    const cols = new Set<number>();
+    const rows = new Set<number>();
+    after.board.forEach((row, y) => row.forEach((c, x) => { if (c !== 0) { cols.add(x); rows.add(y); } }));
+    expect(cols.size).toBe(4);
+    expect(rows.size).toBe(1);
+  });
+
+  it('四種朝向都放得進去', () => {
+    for (const r of [0, 1, 2, 3] as Rotation[]) {
+      const s = { ...mk('creative', 8), queue: ['J', ...mk().queue.slice(1)] as PieceType[] };
+      const { state: after } = placeRot(s, r, 2, 8);
+      expect(after, `rotation ${r}`).not.toBe(s);
+    }
+  });
+
+  it('越界的朝向值會被正規化,不會炸掉', () => {
+    const s = mk('creative', 8);
+    const type = s.queue[0];
+    for (const bad of [-1, 4, 7, -5]) {
+      const { state: after } = reduce(s, {
+        type: 'placePiece', source: 'next', piece: type,
+        rotation: bad as Rotation, x: 1, y: 10
+      });
+      // 不要求一定放得成功(夾擠後可能碰撞),只要求不拋例外、狀態仍是合法的
+      expect(after.board.length).toBe(s.board.length);
+    }
+  });
+
+  it('gravity 模式下轉過向的方塊一樣會落到底', () => {
+    const s = { ...mk('gravity', 8), queue: ['I', ...mk().queue.slice(1)] as PieceType[] };
+    const { state: after } = placeRot(s, 1, 3, 2);
+    const lowest = after.board.reduce(
+      (acc, row, y) => (row.some((c) => c !== 0) ? Math.max(acc, y) : acc), -1);
+    expect(lowest).toBe(TOTAL_H - 1);
+  });
+
+  it('support 模式對轉過向的方塊一樣要求支撐', () => {
+    const s = { ...mk('support', 8), queue: ['I', ...mk().queue.slice(1)] as PieceType[] };
+    const { state: after } = placeRot(s, 1, 3, 4);   // 半空中的直立 I
     expect(after).toBe(s);
   });
 });
@@ -261,7 +332,7 @@ describe('消行與計分', () => {
     }
     s = { ...s, board, queue: ['O', ...s.queue.slice(1)] as PieceType[] };
     const { state: after, events } = reduce(s, {
-      type: 'placePiece', source: 'next', piece: 'O', x: 5, y: BOARD_H - 2
+      type: 'placePiece', source: 'next', piece: 'O', rotation: 0, x: 5, y: BOARD_H - 2
     });
     expect(after.lines).toBe(2);
     expect(after.score).toBeGreaterThan(0);

@@ -80,7 +80,19 @@ export type Action =
   | { type: 'tick'; dt: number }
   | { type: 'move'; dx: number }
   | { type: 'moveTo'; x: number }
-  | { type: 'placePiece'; source: 'hold' | 'next'; piece: PieceType; x: number; y: number }
+  /**
+   * 從托盤（Hold / Next）直接把方塊拖到盤上。
+   * rotation 是 0915 補的：原本寫死 0 ⇒ I 只能橫躺、L 只有一個姿勢，
+   * 這個招牌機制自己砍掉了 3/4 的可能性。
+   */
+  | {
+      type: 'placePiece';
+      source: 'hold' | 'next';
+      piece: PieceType;
+      rotation: Rotation;
+      x: number;
+      y: number;
+    }
   | { type: 'softDrop'; on: boolean }
   | { type: 'hardDrop' }
   | { type: 'rotate'; dir: -1 | 1 }
@@ -88,9 +100,10 @@ export type Action =
   | { type: 'pause' }
   | { type: 'pauseToggle' }
   | { type: 'resume' }
-  | { type: 'setBoardWidth'; width: number }
-  | { type: 'setMode'; mode: GameMode }
-  | { type: 'restart' };
+  // seed:每日挑戰 / 指定題號重開一局時沿用同一副牌;不給就取時間當種子。
+  | { type: 'setBoardWidth'; width: number; seed?: number }
+  | { type: 'setMode'; mode: GameMode; seed?: number }
+  | { type: 'restart'; seed?: number };
 
 export interface StepResult {
   state: GameState;

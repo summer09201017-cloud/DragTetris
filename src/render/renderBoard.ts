@@ -1,6 +1,6 @@
 import { BOARD_H, BUFFER_H, COLORS } from '../game/constants';
 import { blocksOf } from '../game/pieces';
-import type { GameState, Piece, PieceType } from '../game/types';
+import type { GameState, Piece, PieceType, Rotation } from '../game/types';
 import { getGhost } from '../game/engine';
 
 function drawBlock(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, ghost = false) {
@@ -144,7 +144,12 @@ export function renderBoard(canvas: HTMLCanvasElement, state: GameState): void {
 
 // ────────── mini canvases (hold + next)
 
-export function renderMini(canvas: HTMLCanvasElement, type: PieceType | null, dim = false): void {
+export function renderMini(
+  canvas: HTMLCanvasElement,
+  type: PieceType | null,
+  dim = false,
+  rotation: Rotation = 0
+): void {
   const dpr = window.devicePixelRatio || 1;
   const cssW = canvas.clientWidth;
   const cssH = canvas.clientHeight;
@@ -159,7 +164,7 @@ export function renderMini(canvas: HTMLCanvasElement, type: PieceType | null, di
   if (!type) return;
 
   // Compute bounding box of piece in spawn rotation, then center it.
-  const blocks = blocksOf(type, 0);
+  const blocks = blocksOf(type, rotation);
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   for (const [x, y] of blocks) {
     if (x < minX) minX = x; if (x > maxX) maxX = x;

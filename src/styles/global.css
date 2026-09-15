@@ -104,6 +104,45 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 /* 模式選擇:三檔名稱比欄數長,窄螢幕要讓它自己換行而不是溢出 */
 .segmented.mode-options { flex-wrap: wrap; }
 .wide-btn { width: 100%; min-height: 40px; }
+
+/* 托盤方塊:點一下轉向的提示。刻意很小很淡 —— 它是一次性的教學,不是常駐 UI。 */
+/* 挑戰橫幅:告訴玩家「這一局是哪一題」。free 模式整條不渲染。 */
+/* ★ challenge-bar 與 score-grid 都是格線的第一列 ⇒ 直接並列會疊在一起。
+   包一層 .hud-stack 占那一格，兩條在裡面縱向排。 */
+.hud-stack {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.challenge-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  font-size: 11.5px;
+  padding: 1px 0;
+  min-width: 0;
+}
+.challenge-tag { color: var(--accent); font-weight: 700; }
+.challenge-best { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+.mini-hint {
+  font-size: 9.5px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--text-dim);
+  opacity: .75;
+  padding: 2px 0 1px;
+  pointer-events: none;
+}
+.next-head { display: flex; flex-direction: column; }
+.next-head canvas { width: 100%; }
+.draggable-mini { cursor: grab; touch-action: none; }
+.draggable-mini:active { cursor: grabbing; }
 .about-field #settingsVer { font-variant-numeric: tabular-nums; }
 .segmented.mode-options button { flex: 1 1 auto; min-width: 84px; }
 .toggle.active {
@@ -157,7 +196,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
     gap: 16px;
     padding: 16px;
   }
-  .score-grid {
+  .hud-stack {
     grid-column: 1 / -1;
     grid-row: 1;
   }
@@ -187,7 +226,12 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 }
 
 @media (max-width: 560px) {
-  /* 四格在手機寬度擠不下 ⇒ 改成二×二，比卵裁字好讀 */
+  /* ★ 手機的托盤欄只有約 52px 寬，「點一下轉向 ⟳」會斷成兩行、讀不了。
+     窄螢幕只留圖示，文字說明搬到設定面板的「手機操作」那一段。 */
+  .hint-long { display: none; }
+  .mini-hint { font-size: 12px; opacity: .9; }
+
+  /* 四格在手機寬度擠不下 ⇒ 改成二×二，比擠成一排剪字好讀 */
   .score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .side-controls { gap: 5px; }
   .side-controls button {
@@ -274,8 +318,6 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .draggable-mini:active { cursor: grabbing; }
 
 .score-grid {
-  grid-column: 1 / -1;
-  grid-row: 1;
   display: grid;
   /* 四格：SCORE / BEST / LEVEL / LINES。窄螢幕讓它自己換行成兩排二兩。 */
   grid-template-columns: repeat(4, max-content);

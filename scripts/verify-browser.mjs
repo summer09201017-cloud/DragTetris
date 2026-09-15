@@ -93,7 +93,7 @@ async function main() {
   check('⛶ 全螢幕鈕在', await page.locator('.header-btn', { hasText: '⛶' }).count() === 1);
   check('版號徽章在', await page.locator('#appVerBadge').count() === 1);
   const badgeText = await page.locator('#appVerBadge').innerText();
-  check('版號徽章不是寫死的舊版 v1', badgeText.includes('v2'), badgeText);
+  check('版號徽章跟得上改版', badgeText.includes('v3'), badgeText);
 
   // ── 3. 版號兩件套:徽章只是標示,不可搶觸控
   console.log('\n3. 版號兩件套');
@@ -124,7 +124,7 @@ async function main() {
   const widthBtns = await page.locator('.board-width-options button').allInnerTexts();
   check('三種欄數都列出來', widthBtns.length === 3, widthBtns.join('/'));
   const verText = await page.locator('#settingsVer').innerText();
-  check('設定面板看得到版號', verText.includes('v2'), verText);
+  check('設定面板看得到版號', verText.includes('v3'), verText);
   if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/settings.png` });
 
   await page.locator('.wide-btn', { hasText: '改版簡歷' }).click();
@@ -170,6 +170,56 @@ async function main() {
   const creativeCell = (await page.locator('.score-cell').nth(1).innerText()).replace(/\n/g, ' ');
   check('自由建造時第二格印模式名而不是 BEST 0',
     creativeCell.includes('自由建造'), creativeCell);
+
+  // ── 7.5 F 拖曳可轉向
+  console.log('\n7.5 拖曳可轉向');
+  await reset(page, { mode: 'gravity' });
+  check('托盤有「點一下轉向」提示',
+    await page.locator('.mini-hint').count() >= 1);
+  const nextHead = page.locator('.next-head canvas').first();
+  const shot1 = await nextHead.screenshot();
+  await nextHead.click();            // 點一下 = 轉 90°
+  await page.waitForTimeout(300);
+  const shot2 = await nextHead.screenshot();
+  check('點一下托盤方塊，畫面真的變了',
+    Buffer.compare(shot1, shot2) !== 0);
+  for (let i = 0; i < 3; i++) { await nextHead.click(); await page.waitForTimeout(160); }
+  const shot5 = await nextHead.screenshot();
+  check('轉4 次回到原本的樣子', Buffer.compare(shot1, shot5) === 0);
+
+  // ── 7.6 G 每日挑戰
+  console.log('\n7.6 每日挑戰');
+  await page.goto(`${BASE}?daily`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(700);
+  check('挑戰橫幅出現', await page.locator('.challenge-bar').count() === 1);
+  const tag = await page.locator('.challenge-tag').innerText();
+  check('橫幅寫著今日挑戰與題號',
+    tag.includes('今日挑戰') && /#\d{6}/.test(tag), tag);
+  const queue1 = await page.evaluate(() => {
+    const c = document.querySelector('.next-head canvas');
+    return c ? c.toDataURL().slice(0, 200) : null;
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(700);
+  const queue2 = await page.evaluate(() => {
+    const c = document.querySelector('.next-head canvas');
+    return c ? c.toDataURL().slice(0, 200) : null;
+  });
+  check('重新整理拿到同一副牌（同一題才成立）',
+    queue1 != null && queue1 === queue2);
+  await openSettings(page);
+  check('設定面板有「離開挑戰」',
+    await page.locator('.wide-btn', { hasText: '離開挑戰' }).count() === 1);
+  await closeSettings(page);
+
+  await page.goto(`${BASE}?seed=123456`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(700);
+  const seedTag = await page.locator('.challenge-tag').innerText();
+  check('?seed=123456 認得出來', seedTag.includes('123456'), seedTag);
+
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(600);
+  check('自由練習時沒有挑戰橫幅', await page.locator('.challenge-bar').count() === 0);
 
   // ── 8. 手機版面
   console.log('\n8. 手機版面');

@@ -4,6 +4,14 @@ import { DEFAULT_BOARD_W, normalizeBoardWidth } from './game/constants';
 import type { Action, GameEvent, GameMode, GameState } from './game/types';
 import { audio } from './audio/AudioManager';
 import { loadRecords, submitGame, type BeatenFlags, type RecordBook } from './records';
+import {
+  challengeFromLocation,
+  loadDaily,
+  seedOf,
+  submitDaily,
+  type Challenge,
+  type DailyResult
+} from './daily';
 
 const BOARD_WIDTH_STORAGE_KEY = 'tetris.boardWidth';
 const MODE_STORAGE_KEY = 'tetris.mode';
@@ -70,11 +78,22 @@ function saveBoardWidth(width: number): void {
   }
 }
 
+/**
+ * 這一場的挑戰設定。`?daily` / `?seed=` 只在開頁時解析一次 ——
+ * ★ 重開一局必須沿用同一顆種子,否則「全世界同一題」當場破功
+ *   (使用者一按「再玩一局」就換了一副牌,而畫面還寫著同一個題號 = 說謊)。
+ */
+const challenge: Challenge = challengeFromLocation();
+const challengeSeed = seedOf(challenge);
+
 interface Store {
   state: GameState;
   toast: string | null;
   records: RecordBook;
   beaten: BeatenFlags | null;
+  challenge: Challenge;
+  daily: DailyResult | null;
+  dailyBeaten: boolean;
   dispatch: (a: Action) => void;
   tick: (dt: number) => void;
   setToast: (msg: string | null) => void;
@@ -132,20 +151,29 @@ function afterTransition(
   const { book, beaten } = submitGame(after);
   pingDone();
   set({ records: book, beaten });
+
+  // 每日挑戰另記一筆「今天最好」——跟一般最高分分開,因為那是同一副牌的較量。
+  if (challenge.kind === 'daily') {
+    const { result, beaten: dailyBeaten } = submitDaily(challenge.day, after.score);
+    set({ daily: result, dailyBeaten });
+  }
 }
 
 export const useGame = create<Store>((set, get) => ({
-  state: createInitialState(loadBoardWidth(), undefined, loadMode()),
+  state: createInitialState(loadBoardWidth(), challengeSeed, loadMode()),
   toast: null,
   records: loadRecords(),
   beaten: null,
+  challenge,
+  daily: challenge.kind === 'daily' ? loadDaily(challenge.day) : null,
+  dailyBeaten: false,
   dispatch: (a) => {
     const before = get().state;
     const { state: newState, events } = reduce(before, a);
     if (a.type === 'setBoardWidth') saveBoardWidth(newState.boardWidth);
     if (a.type === 'setMode') saveMode(newState.mode);
     if (a.type === 'restart' || a.type === 'setBoardWidth' || a.type === 'setMode') {
-      set({ beaten: null });
+      set({ beaten: null, dailyBeaten: false });
       markGameStart();
     }
     handleEvents(events, (m) => get().setToast(m));

@@ -10,21 +10,34 @@ import { TouchPad } from './components/TouchPad';
 import { audio } from './audio/AudioManager';
 import { BOARD_H, COLORS } from './game/constants';
 import { blocksOf } from './game/pieces';
-import type { GameMode, PieceType } from './game/types';
+import type { GameMode, PieceType, Rotation } from './game/types';
 import { getRecord, scoresCount } from './records';
+import { challengeLabel, seedLabel, todayKey } from './daily';
 import { registerPwa } from './pwa';
 
 const LOBBY_URL = 'https://hfpc-bible-games.summer09201017.workers.dev/';
 
 type TraySource = 'hold' | 'next';
-type TrayDrag = { source: TraySource; type: PieceType; pointerId: number; x: number; y: number };
+type TrayDrag = {
+  source: TraySource;
+  type: PieceType;
+  rotation: Rotation;
+  pointerId: number;
+  x: number;
+  y: number;
+};
+
+/** 兩個托盤各自記住自己的朝向;方塊換了就歸零。 */
+type TrayRotations = Record<TraySource, Rotation>;
+
+const ZERO_ROTATIONS: TrayRotations = { hold: 0, next: 0 };
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function pieceBounds(type: PieceType) {
-  const cells = blocksOf(type, 0);
+function pieceBounds(type: PieceType, rotation: Rotation = 0) {
+  const cells = blocksOf(type, rotation);
   const xs = cells.map(([x]) => x);
   const ys = cells.map(([, y]) => y);
   return {
@@ -53,8 +66,14 @@ function boardPointFromClient(canvas: HTMLCanvasElement, clientX: number, client
   };
 }
 
-function dropOrigin(type: PieceType, col: number, row: number, boardWidth: number) {
-  const bounds = pieceBounds(type);
+function dropOrigin(
+  type: PieceType,
+  rotation: Rotation,
+  col: number,
+  row: number,
+  boardWidth: number
+) {
+  const bounds = pieceBounds(type, rotation);
   const anchorX = Math.round((bounds.minX + bounds.maxX) / 2);
   const anchorY = Math.round((bounds.minY + bounds.maxY) / 2);
 
@@ -65,7 +84,7 @@ function dropOrigin(type: PieceType, col: number, row: number, boardWidth: numbe
 }
 
 function FloatingPiece({ drag }: { drag: TrayDrag }) {
-  const bounds = pieceBounds(drag.type);
+  const bounds = pieceBounds(drag.type, drag.rotation);
   const cell = 22;
   const width = (bounds.maxX - bounds.minX + 1) * cell;
   const height = (bounds.maxY - bounds.minY + 1) * cell;
@@ -76,7 +95,7 @@ function FloatingPiece({ drag }: { drag: TrayDrag }) {
       style={{ left: drag.x, top: drag.y, width, height }}
       aria-hidden="true"
     >
-      {blocksOf(drag.type, 0).map(([x, y], index) => (
+      {blocksOf(drag.type, drag.rotation).map(([x, y], index) => (
         <span
           key={`${x}-${y}-${index}`}
           className="floating-piece-cell"
@@ -98,6 +117,9 @@ export default function App() {
   const toast = useGame((s) => s.toast);
   const records = useGame((s) => s.records);
   const beaten = useGame((s) => s.beaten);
+  const challenge = useGame((s) => s.challenge);
+  const daily = useGame((s) => s.daily);
+  const dailyBeaten = useGame((s) => s.dailyBeaten);
   const dispatch = useGame((s) => s.dispatch);
   const tick = useGame((s) => s.tick);
   const record = getRecord(records, state.mode, state.boardWidth);
@@ -108,6 +130,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [audioStarted, setAudioStarted] = useState(false);
   const [trayDrag, setTrayDrag] = useState<TrayDrag | null>(null);
+  const [trayRotations, setTrayRotations] = useState<TrayRotations>(ZERO_ROTATIONS);
   const [mouseDragEnabled, setMouseDragEnabled] = useState(() => {
     try {
       return window.localStorage.getItem('tetris.mouseDragEnabled') === '1';
@@ -174,6 +197,21 @@ export default function App() {
     }
   }, [mouseDragEnabled]);
 
+  // ★ 托盤裡的方塊換人了就把朝向歸零。
+  //   不歸零的話，上一顆轉好的角度會套到下一顆身上 —— 畫面確實會照那個角度畫，
+  //   所以不會壞掉、也不會報錯，只是使用者每次都得先轉回來，像是「它自己亂轉」。
+  const headNext = state.queue[0] ?? null;
+  useEffect(() => {
+    setTrayRotations((r) => (r.next === 0 ? r : { ...r, next: 0 }));
+  }, [headNext]);
+  useEffect(() => {
+    setTrayRotations((r) => (r.hold === 0 ? r : { ...r, hold: 0 }));
+  }, [state.hold]);
+
+  const rotateTray = useCallback((source: TraySource) => {
+    setTrayRotations((r) => ({ ...r, [source]: (((r[source] + 1) % 4) as Rotation) }));
+  }, []);
+
   const cellSize = useCallback(() => {
     const c = canvasRef.current;
     if (!c) return 24;
@@ -197,18 +235,34 @@ export default function App() {
     dispatch({ type: 'pauseToggle' });
   }, [dispatch]);
 
+  // ★ 重開一局要把挑戰的種子帶回去,否則「同一題」當場換了一副牌。
+  const challengeSeed = challenge.kind === 'free' ? undefined : challenge.seed;
   const restart = useCallback(() => {
-    dispatch({ type: 'restart' });
+    dispatch({ type: 'restart', seed: challengeSeed });
     audio.startBgm();
-  }, [dispatch]);
+  }, [dispatch, challengeSeed]);
 
-  const startTrayDrag = useCallback((source: TraySource, type: PieceType, event: React.PointerEvent) => {
+  // 進 / 離開挑戰都要換網址再整頁重來 —— 種子是在開頁時解析的,
+  // 只改 state 的話網址跟實際玩的題目會對不起來(分享出去的連結就是錯的)。
+  const goDaily = useCallback(() => {
+    window.location.search = '?daily';
+  }, []);
+  const goFree = useCallback(() => {
+    window.location.search = '';
+  }, []);
+
+  const startTrayDrag = useCallback((
+    source: TraySource,
+    type: PieceType,
+    rotation: Rotation,
+    event: React.PointerEvent
+  ) => {
     if (state.status !== 'playing') return;
 
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    setTrayDrag({ source, type, pointerId: event.pointerId, x: event.clientX, y: event.clientY });
+    setTrayDrag({ source, type, rotation, pointerId: event.pointerId, x: event.clientX, y: event.clientY });
   }, [state.status]);
 
   const dropTrayPiece = useCallback((drag: TrayDrag, clientX: number, clientY: number) => {
@@ -218,11 +272,12 @@ export default function App() {
     const point = boardPointFromClient(canvas, clientX, clientY, state.boardWidth);
     if (!point) return;
 
-    const origin = dropOrigin(drag.type, point.col, point.row, state.boardWidth);
+    const origin = dropOrigin(drag.type, drag.rotation, point.col, point.row, state.boardWidth);
     dispatch({
       type: 'placePiece',
       source: drag.source,
       piece: drag.type,
+      rotation: drag.rotation,
       x: origin.x,
       y: origin.y
     });
@@ -248,14 +303,30 @@ export default function App() {
       if (event.pointerId === trayDrag.pointerId) setTrayDrag(null);
     };
 
+    // 拖曳途中用鍵盤轉向（桌機）。手機是「拖之前先點一下托盤」。
+    const onKeyDown = (event: KeyboardEvent) => {
+      const dir = ['ArrowUp', 'x', 'X'].includes(event.key) ? 1
+        : ['z', 'Z', 'Control'].includes(event.key) ? -1
+        : 0;
+      if (!dir) return;
+      event.preventDefault();
+      setTrayDrag((cur) => cur ? { ...cur, rotation: (((cur.rotation + dir + 4) % 4) as Rotation) } : cur);
+      setTrayRotations((r) => ({
+        ...r,
+        [trayDrag.source]: (((trayDrag.rotation + dir + 4) % 4) as Rotation)
+      }));
+    };
+
     window.addEventListener('pointermove', onPointerMove, { passive: false });
     window.addEventListener('pointerup', onPointerUp, { passive: false });
     window.addEventListener('pointercancel', onPointerCancel);
+    window.addEventListener('keydown', onKeyDown);
 
     return () => {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerCancel);
+      window.removeEventListener('keydown', onKeyDown);
     };
   }, [dropTrayPiece, trayDrag]);
 
@@ -301,7 +372,17 @@ export default function App() {
       </header>
 
       <div className="layout">
-        <Hud state={state} record={record} />
+        <div className="hud-stack">
+          {challengeLabel(challenge) && (
+            <div className="challenge-bar">
+              <span className="challenge-tag">{challengeLabel(challenge)}</span>
+              {daily && daily.plays > 0 && (
+                <span className="challenge-best">今日最佳 {daily.best.toLocaleString()}</span>
+              )}
+            </div>
+          )}
+          <Hud state={state} record={record} />
+        </div>
 
         <div className="side-controls side-controls-left">
           <button type="button" onClick={togglePause} disabled={state.status === 'gameover'}>
@@ -324,7 +405,13 @@ export default function App() {
         </div>
 
         <div className="panel-left">
-          <HoldBox piece={state.hold} locked={!state.canHold} onPieceDragStart={startTrayDrag} />
+          <HoldBox
+            piece={state.hold}
+            locked={!state.canHold}
+            rotation={trayRotations.hold}
+            onPieceDragStart={startTrayDrag}
+            onRotate={rotateTray}
+          />
         </div>
 
         <div className={mouseDragEnabled ? 'stage mouse-drag-enabled' : 'stage'} ref={stageRef}>
@@ -359,6 +446,12 @@ export default function App() {
                 {beaten && (beaten.score || beaten.lines || beaten.level || beaten.maxCombo) && (
                   <p className="new-best">🎉 新紀錄!</p>
                 )}
+                {challenge.kind === 'daily' && (
+                  <p className="field-note">
+                    {dailyBeaten ? '📅 今日挑戰新高!' : '📅 今日挑戰'}
+                    {daily ? ` ・ 今日最佳 ${daily.best.toLocaleString()}(第 ${daily.plays} 次)` : ''}
+                  </p>
+                )}
                 <p>分數 {state.score.toLocaleString()} ・ 等級 {state.level} ・ 行數 {state.lines}</p>
                 {scoresCount(state.mode) ? (
                   <dl className="record-list">
@@ -383,7 +476,12 @@ export default function App() {
         </div>
 
         <div className="panel-right">
-          <NextBox queue={state.queue} onPieceDragStart={startTrayDrag} />
+          <NextBox
+            queue={state.queue}
+            rotation={trayRotations.next}
+            onPieceDragStart={startTrayDrag}
+            onRotate={rotateTray}
+          />
         </div>
 
         <TouchPad dispatch={dispatch} />
@@ -393,8 +491,13 @@ export default function App() {
         open={settingsOpen}
         boardWidth={state.boardWidth}
         mode={state.mode}
-        onBoardWidthChange={(width) => dispatch({ type: 'setBoardWidth', width })}
-        onModeChange={(mode: GameMode) => dispatch({ type: 'setMode', mode })}
+        challengeKind={challenge.kind}
+        challengeSeedText={challenge.kind === 'free' ? '' : seedLabel(challenge.seed)}
+        today={todayKey()}
+        onStartDaily={goDaily}
+        onLeaveChallenge={goFree}
+        onBoardWidthChange={(width) => dispatch({ type: 'setBoardWidth', width, seed: challengeSeed })}
+        onModeChange={(mode: GameMode) => dispatch({ type: 'setMode', mode, seed: challengeSeed })}
         onClose={() => setSettingsOpen(false)}
       />
       {trayDrag && <FloatingPiece drag={trayDrag} />}

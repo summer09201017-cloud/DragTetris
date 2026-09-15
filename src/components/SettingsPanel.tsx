@@ -28,12 +28,29 @@ interface Props {
   open: boolean;
   boardWidth: number;
   mode: GameMode;
+  challengeKind: 'free' | 'daily' | 'seed';
+  challengeSeedText: string;
+  today: string;
+  onStartDaily: () => void;
+  onLeaveChallenge: () => void;
   onBoardWidthChange: (width: number) => void;
   onModeChange: (mode: GameMode) => void;
   onClose: () => void;
 }
 
-export function SettingsPanel({ open, boardWidth, mode, onBoardWidthChange, onModeChange, onClose }: Props) {
+export function SettingsPanel({
+  open,
+  boardWidth,
+  mode,
+  challengeKind,
+  challengeSeedText,
+  today,
+  onStartDaily,
+  onLeaveChallenge,
+  onBoardWidthChange,
+  onModeChange,
+  onClose
+}: Props) {
   const [s, setS] = useState(audio.getSettings());
 
   useEffect(() => {
@@ -46,6 +63,33 @@ export function SettingsPanel({ open, boardWidth, mode, onBoardWidthChange, onMo
     <div className="settings" onClick={onClose}>
       <div className="card" onClick={(e) => e.stopPropagation()}>
         <h2>設定</h2>
+
+        <div className="field">
+          <label>
+            <span>每日挑戰</span>
+            <span>{challengeKind === 'daily' ? today : challengeKind === 'seed' ? `#${challengeSeedText}` : '未開始'}</span>
+          </label>
+          {challengeKind === 'free' ? (
+            <>
+              <button type="button" className="wide-btn" onClick={onStartDaily}>
+                開始今日挑戰
+              </button>
+              <p className="field-note">
+                全世界同一天拿到同一串方塊,比誰分數高。每天換一題。
+              </p>
+            </>
+          ) : (
+            <>
+              <button type="button" className="wide-btn" onClick={onLeaveChallenge}>
+                離開挑戰,回自由練習
+              </button>
+              <p className="field-note">
+                題號 <b>#{challengeSeedText}</b> ——
+                把網址整串傳給別人,或請他們在網址加 <code>?seed={challengeSeedText}</code>,就是同一副牌。
+              </p>
+            </>
+          )}
+        </div>
 
         <div className="field">
           <label>
@@ -146,13 +190,15 @@ export function SettingsPanel({ open, boardWidth, mode, onBoardWidthChange, onMo
           <kbd>←</kbd> <kbd>→</kbd> 移動，<kbd>↓</kbd> 軟降，<kbd>Space</kbd> 硬降<br />
           <kbd>↑</kbd> / <kbd>X</kbd> 順時針，<kbd>Z</kbd> 逆時針<br />
           <kbd>C</kbd> Hold，<kbd>P</kbd> 暫停/繼續，<kbd>R</kbd> 重啟<br />
-          開啟「滑鼠拖曳」後，可在棋盤上拖曳目前方塊
+          開啟「滑鼠拖曳」後，可在棋盤上拖曳目前方塊<br />
+          拖 HOLD / NEXT 的方塊時，↑ / X / Z 可以邊拖邊轉向
           <br /><br />
           <strong style={{ color: 'var(--text)' }}>手機操作</strong><br />
           水平拖曳 → 左右移動<br />
           下拖曳 → 軟降，快速下滑 → 硬降<br />
           點一下 → 旋轉，雙擊 → 反向旋轉<br />
-          長按或雙指 → Hold
+          長按或雙指 → Hold<br />
+          <b>點一下 HOLD / NEXT 的方塊 → 轉 90°</b>，再拖到盤上就照那個方向放
         </div>
 
         <div className="actions" style={{ marginTop: 16 }}>
