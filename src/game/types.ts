@@ -63,6 +63,13 @@ export interface GameState {
   clearAnim: { rows: number[]; t: number } | null;
   // RNG seed
   rngState: number;
+  /**
+   * 🧩 殘局模式(0916)。true 時:
+   *   - 佇列是**有限**的(放完就沒了,不從袋子補牌)——殘局的題目就是那幾顆方塊;
+   *   - current 恆為 null ⇒ 沒有會自己往下掉的方塊(tickGravity 開頭就 return)。
+   * 一般對局恆為 false,行為與 0915 版完全相同。
+   */
+  puzzle: boolean;
 }
 
 export type GameEvent =

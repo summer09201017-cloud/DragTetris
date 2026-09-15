@@ -8,7 +8,9 @@ import { HoldBox, NextBox } from './components/Mini';
 import { SettingsPanel } from './components/SettingsPanel';
 import { TouchPad } from './components/TouchPad';
 import { audio } from './audio/AudioManager';
-import { BOARD_H, COLORS } from './game/constants';
+import { BOARD_H } from './game/constants';
+import { pieceColor, SKINS } from './skins';
+import { UNDO_MAX } from './store';
 import { blocksOf } from './game/pieces';
 import type { GameMode, PieceType, Rotation } from './game/types';
 import { getRecord, scoresCount } from './records';
@@ -104,7 +106,7 @@ function FloatingPiece({ drag }: { drag: TrayDrag }) {
             top: (y - bounds.minY) * cell,
             width: cell,
             height: cell,
-            background: COLORS[drag.type]
+            background: pieceColor(drag.type)
           }}
         />
       ))}
@@ -122,6 +124,23 @@ export default function App() {
   const dailyBeaten = useGame((s) => s.dailyBeaten);
   const dispatch = useGame((s) => s.dispatch);
   const tick = useGame((s) => s.tick);
+  const undo = useGame((s) => s.undo);
+  const undoLeft = useGame((s) => s.undoLeft);
+  const canUndo = useGame((s) => s.canUndo);
+  const usedUndo = useGame((s) => s.usedUndo);
+  const skin = useGame((s) => s.skin);
+  const setSkin = useGame((s) => s.setSkin);
+  const puzzleStatus = useGame((s) => s.puzzleStatus);
+  const puzzleSet = useGame((s) => s.puzzleSet);
+  const puzzleIndex = useGame((s) => s.puzzleIndex);
+  const puzzleSolvedIds = useGame((s) => s.puzzleSolvedIds);
+  const puzzleMoves = useGame((s) => s.puzzleMoves);
+  const openPuzzles = useGame((s) => s.openPuzzles);
+  const startPuzzle = useGame((s) => s.startPuzzle);
+  const retryPuzzle = useGame((s) => s.retryPuzzle);
+  const exitPuzzle = useGame((s) => s.exitPuzzle);
+  const activePuzzle = puzzleStatus === 'off' ? null : puzzleSet?.[puzzleIndex] ?? null;
+  const skinSubtitle = SKINS[skin]?.subtitle ?? null;
   const record = getRecord(records, state.mode, state.boardWidth);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -357,7 +376,10 @@ export default function App() {
         <button type="button" className="header-btn" onClick={backToLobby} title="返回大廳">
           ← 大廳
         </button>
-        <h1>俄羅斯方塊 TETRIS</h1>
+        <h1>
+          俄羅斯方塊 TETRIS
+          {skinSubtitle && <span className="app-subtitle">{skinSubtitle}</span>}
+        </h1>
         {fullscreenSupported && (
           <button
             type="button"
@@ -382,11 +404,32 @@ export default function App() {
             </div>
           )}
           <Hud state={state} record={record} />
+          {activePuzzle && (
+            <div className="challenge-bar puzzle-bar">
+              <span className="challenge-tag">
+                🧩 殘局 {puzzleIndex + 1}/3 ・ 剩 {state.queue.length} 塊
+              </span>
+              <span className="challenge-best">
+                <button type="button" className="link-btn" onClick={retryPuzzle}>重來</button>
+                <button type="button" className="link-btn" onClick={exitPuzzle}>離開殘局</button>
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="side-controls side-controls-left">
           <button type="button" onClick={togglePause} disabled={state.status === 'gameover'}>
             {state.status === 'paused' ? '繼續' : '暫停'}
+          </button>
+          {/* ↩ 悔一步：對小孩與長輩體驗差異最大的一顆鈕。一局三次，用完就不亮。 */}
+          <button
+            type="button"
+            className="undo-btn"
+            onClick={undo}
+            disabled={!canUndo || state.status === 'gameover'}
+            title={`把上一顆方塊放下去之前的盤面還原回來（一局 ${UNDO_MAX} 次）`}
+          >
+            ↩ 悔一步 {undoLeft}
           </button>
           <button type="button" onClick={() => setSettingsOpen(true)}>設定</button>
         </div>
@@ -439,7 +482,40 @@ export default function App() {
               </div>
             </div>
           )}
-          {state.status === 'gameover' && (
+          {/* 🧩 殘局結算：解開 / 方塊用完但沒清乾淨 */}
+          {puzzleStatus === 'solved' && (
+            <div className="overlay">
+              <div className="panel">
+                <h2>🧩 解開了！</h2>
+                <p>用了 {puzzleMoves} 塊，把盤面清得乾乾淨淨。</p>
+                <p className="field-note">今天這一組共三題，難度由淺入深。明天換一組新的。</p>
+                <div className="row">
+                  {puzzleIndex < 2 && (
+                    <button type="button" onClick={() => startPuzzle(puzzleIndex + 1)}>下一題</button>
+                  )}
+                  <button type="button" onClick={retryPuzzle}>再解一次</button>
+                  <button type="button" onClick={exitPuzzle}>回一般對局</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {puzzleStatus === 'failed' && (
+            <div className="overlay">
+              <div className="panel">
+                <h2>還差一點</h2>
+                <p>方塊用完了，盤面還沒清乾淨。</p>
+                <p className="field-note">
+                  這一題一定解得開（出題時就用遊戲本身的規則跑過一遍）。
+                  換個位置塞塞看，或按「悔一步」退回去。
+                </p>
+                <div className="row">
+                  <button type="button" onClick={retryPuzzle}>重來一次</button>
+                  <button type="button" onClick={exitPuzzle}>回一般對局</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {puzzleStatus === 'off' && state.status === 'gameover' && (
             <div className="overlay">
               <div className="panel">
                 <h2>GAME OVER</h2>
@@ -464,6 +540,12 @@ export default function App() {
                   </dl>
                 ) : (
                   <p className="field-note">自由建造是沙盒模式,不列入紀錄。</p>
+                )}
+                {usedUndo && (
+                  <p className="field-note">
+                    ↩ 這一局用過悔一步,所以不列入紀錄 ——
+                    理由同自由建造:規則不一樣,混在一起比沒有意義。
+                  </p>
                 )}
                 <p className="field-note">紀錄依「模式 × 欄數」分開計算(目前:{state.boardWidth} 欄)。</p>
                 <div className="row">
@@ -494,6 +576,12 @@ export default function App() {
         challengeKind={challenge.kind}
         challengeSeedText={challenge.kind === 'free' ? '' : seedLabel(challenge.seed)}
         today={todayKey()}
+        skin={skin}
+        puzzleSet={puzzleSet}
+        puzzleSolvedIds={puzzleSolvedIds}
+        onSkinChange={setSkin}
+        onOpenPuzzles={openPuzzles}
+        onStartPuzzle={(index) => { startPuzzle(index); setSettingsOpen(false); }}
         onStartDaily={goDaily}
         onLeaveChallenge={goFree}
         onBoardWidthChange={(width) => dispatch({ type: 'setBoardWidth', width, seed: challengeSeed })}

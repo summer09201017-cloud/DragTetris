@@ -16,8 +16,27 @@
  *   (silent-failure #36)。一律 process.exitCode。
  */
 import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 const BASE = process.env.BASE || 'http://localhost:4173';
+
+/**
+ * 期望的版號從 index.html 的 APP_VERSIONS[0] 讀出來,**不要寫死**。
+ * 0916 實錄:這支腳本原本寫死 'v3',一改版就變成「改功能順便要改測試」——
+ * 那正是 v2 當初在產品裡修掉的「版號寫死改版必漂移」,只是搬到測試裡而已。
+ */
+const EXPECTED_VERSION = (() => {
+  try {
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+    const html = readFileSync(join(root, 'index.html'), 'utf8');
+    const m = html.match(/\{\s*v:\s*'(v\d+)'/);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+})();
 const SHOT_DIR = process.env.SHOT_DIR || '';
 
 let pass = 0;
@@ -54,8 +73,11 @@ async function openSettings(page) {
 }
 
 async function closeSettings(page) {
-  // 設定面板沒有關閉鈕,點背景遮罩才收(onClick 掛在 .settings 上)。
-  await page.locator('.settings').click({ position: { x: 4, y: 4 } });
+  // 0916 起面板頂端有一顆 sticky 的 ✕(手機體檢紅燈:橫向時底部那顆「關閉」在螢幕外
+  // 將近兩個畫面高的地方,小孩點進設定就出不來)。優先用它,退路才是點背景遮罩。
+  const x = page.locator('.settings-close');
+  if (await x.count()) await x.click();
+  else await page.locator('.settings').click({ position: { x: 4, y: 4 } });
   await page.waitForTimeout(250);
 }
 
@@ -96,7 +118,7 @@ async function main() {
   check('⛶ 全螢幕鈕在', await page.locator('.header-btn', { hasText: '⛶' }).count() === 1);
   check('版號徽章在', await page.locator('#appVerBadge').count() === 1);
   const badgeText = await page.locator('#appVerBadge').innerText();
-  check('版號徽章跟得上改版', badgeText.includes('v3'), badgeText);
+  check('版號徽章跟得上改版', EXPECTED_VERSION != null && badgeText.includes(EXPECTED_VERSION), `${badgeText} vs ${EXPECTED_VERSION}`);
 
   // ── 3. 版號兩件套:徽章只是標示,不可搶觸控
   console.log('\n3. 版號兩件套');
@@ -127,7 +149,7 @@ async function main() {
   const widthBtns = await page.locator('.board-width-options button').allInnerTexts();
   check('三種欄數都列出來', widthBtns.length === 3, widthBtns.join('/'));
   const verText = await page.locator('#settingsVer').innerText();
-  check('設定面板看得到版號', verText.includes('v3'), verText);
+  check('設定面板看得到版號', EXPECTED_VERSION != null && verText.includes(EXPECTED_VERSION), `${verText} vs ${EXPECTED_VERSION}`);
   if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/settings.png` });
 
   await page.locator('.wide-btn', { hasText: '改版簡歷' }).click();
@@ -179,6 +201,18 @@ async function main() {
   await reset(page, { mode: 'gravity' });
   check('托盤有「點一下轉向」提示',
     await page.locator('.mini-hint').count() >= 1);
+
+  // ⚠ 0916 修掉一個**假紅**:自由模式的種子是時間戳,NEXT 第一顆是隨機的 ——
+  //   抽到 O 的時候轉 90° 的畫面**本來就一模一樣**(O 的四個朝向相同),
+  //   於是這一項每七次會無緣無故紅一次,而產品完全沒壞(0916 連跑三輪:紅、綠、綠)。
+  //   改成先用 ?seed= 挑一顆不是 O 的題號,這一項才是在測「轉得動嗎」。
+  let rotatable = false;
+  for (let seed = 1; seed <= 12 && !rotatable; seed++) {
+    await page.goto(`${BASE}?seed=${seed}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(450);
+    rotatable = await page.evaluate(() => window.__state?.queue?.[0] !== 'O');
+  }
+  check('找得到一顆轉起來看得出差別的方塊(不是 O)', rotatable);
   const nextHead = page.locator('.next-head canvas').first();
   const shot1 = await nextHead.screenshot();
   await nextHead.click();            // 點一下 = 轉 90°
@@ -249,6 +283,131 @@ async function main() {
     check(`${w}px 徽章沒壓住操作鈕`, steals.length === 0, steals.join('/'));
     if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/mobile-${w}.png` });
   }
+
+  // ── 9. 0916 新功能:悔一步 / 每日殘局 / 聖經皮膚
+  console.log('\n9. 悔一步 / 每日殘局 / 聖經皮膚');
+  await page.setViewportSize({ width: 430, height: 860 });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await reset(page, { mode: 'gravity' });
+
+  // 9.1 悔一步
+  const undoBtn = page.locator('.undo-btn');
+  check('悔一步鈕在', await undoBtn.count() === 1);
+  check('一開局悔不了(還沒有任何方塊落定)', await undoBtn.isDisabled());
+  check('悔棋次數一開始是 3', (await undoBtn.innerText()).includes('3'));
+
+  await page.locator('canvas.board-canvas').click();
+  await page.keyboard.press('Space');            // 硬降一顆 ⇒ 產生一次 lock
+  await page.waitForTimeout(250);
+  check('落定一顆之後就能悔', !(await undoBtn.isDisabled()));
+
+  const beforeUndo = await page.evaluate(() => JSON.stringify(window.__state?.board ?? null));
+  await undoBtn.click();
+  await page.waitForTimeout(250);
+  check('悔完剩兩次', (await undoBtn.innerText()).includes('2'), await undoBtn.innerText());
+  const afterUndo = await page.evaluate(() => JSON.stringify(window.__state?.board ?? null));
+  check('悔一步之後盤面真的變回去了', beforeUndo !== afterUndo);
+
+  // 用完三次就不能再悔
+  for (let i = 0; i < 4; i++) {
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(160);
+    if (!(await undoBtn.isDisabled())) await undoBtn.click();
+    await page.waitForTimeout(160);
+  }
+  check('三次用完就按不下去了', await undoBtn.isDisabled(), await undoBtn.innerText());
+
+  // 9.2 聖經皮膚
+  await reset(page, { mode: 'gravity' });
+  await openSettings(page);
+  const skinBtns = await page.locator('.skin-options button').allInnerTexts();
+  check('皮膚有兩種', skinBtns.length === 2, skinBtns.join('/'));
+  check('預設是經典皮', (await page.locator('.skin-options button.active').innerText()).includes('經典'));
+  const boardBefore = await page.evaluate(() => document.querySelector('canvas.board-canvas')?.toDataURL().slice(0, 300));
+  await page.locator('.skin-options button', { hasText: '聖經' }).click();
+  await page.waitForTimeout(400);
+  check('切成聖經皮之後畫面真的換了色',
+    boardBefore !== await page.evaluate(() => document.querySelector('canvas.board-canvas')?.toDataURL().slice(0, 300)));
+  await closeSettings(page);
+  check('聖經皮有副標', (await page.locator('.app-subtitle').count()) === 1);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(500);
+  check('皮膚選擇記得住', await page.locator('.app-subtitle').count() === 1);
+
+  // 9.3 每日殘局
+  await openSettings(page);
+  await page.locator('.wide-btn', { hasText: '看今天的三題' }).click();
+  await page.waitForTimeout(1200);
+  const tiers = await page.locator('.puzzle-options button').allInnerTexts();
+  check('今天出得了三題', tiers.length === 3, tiers.join('/'));
+  check('三題都不是「—」(出不出來會誠實顯示)', !tiers.some((t) => t.trim() === '—'), tiers.join('/'));
+  await page.locator('.puzzle-options button').first().click();
+  await page.waitForTimeout(500);
+  check('進殘局後設定面板自動關掉', await page.locator('.settings .card').count() === 0);
+  check('殘局狀態列出現', await page.locator('.puzzle-bar').count() === 1);
+  const puzzleInfo = await page.evaluate(() => {
+    const s = window.__state;
+    if (!s) return null;
+    const filled = s.board.flat().filter((c) => c !== 0).length;
+    return { puzzle: s.puzzle, current: s.current, queue: s.queue.length, filled };
+  });
+  check('殘局盤面上真的有磚', puzzleInfo != null && puzzleInfo.filled > 0, JSON.stringify(puzzleInfo));
+  check('殘局沒有會自己往下掉的方塊', puzzleInfo?.current == null);
+  check('殘局的佇列是有限的(不是 6 顆的無限佇列)',
+    puzzleInfo != null && puzzleInfo.queue >= 3 && puzzleInfo.queue <= 7, String(puzzleInfo?.queue));
+  await page.waitForTimeout(1200);
+  const stillSame = await page.evaluate(() => window.__state?.board.flat().filter((c) => c !== 0).length);
+  check('等一秒多盤面也不會自己動', stillSame === puzzleInfo?.filled, `${stillSame} vs ${puzzleInfo?.filled}`);
+  if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/puzzle.png` });
+
+  // 9.4 手機紅燈迴歸:設定面板在橫向也關得掉
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(500);
+  await openSettings(page);
+  const closeBox = await page.locator('.settings-close').boundingBox();
+  check('橫向時關閉鈕就在畫面裡(不必捲兩個畫面)',
+    closeBox != null && closeBox.y >= 0 && closeBox.y + closeBox.height <= 390,
+    closeBox ? `y=${Math.round(closeBox.y)} h=${Math.round(closeBox.height)}` : 'null');
+  check('關閉鈕夠大', closeBox != null && closeBox.width >= 44 && closeBox.height >= 44,
+    closeBox ? `${Math.round(closeBox.width)}x${Math.round(closeBox.height)}` : 'null');
+  const ownsClose = await page.evaluate(() => {
+    const el = document.querySelector('.settings-close');
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return hit === el || el.contains(hit);
+  });
+  check('關閉鈕沒有被別的東西蓋住', ownsClose);
+  await closeSettings(page);
+  check('橫向時設定面板真的關得掉', await page.locator('.settings .card').count() === 0);
+
+  const smallButtons = await page.evaluate(() => {
+    const bad = [];
+    document.querySelectorAll('.side-controls button').forEach((b) => {
+      const r = b.getBoundingClientRect();
+      if (r.height < 44) bad.push(`${b.textContent.trim()}=${Math.round(r.height)}px`);
+    });
+    return bad;
+  });
+  check('側邊控制鈕都 ≥44px(0916 體檢是 30px)', smallButtons.length === 0, smallButtons.join('/'));
+
+  // ⚠ 橫向的棋盤本來就窄:8×20 的盤寬高比 0.4,受限的是**高度**不是欄寬
+  //   (844×390 上就算把整個畫面高度都給它也只能到 156px 寬)。
+  //   所以這裡守的是「沒有退步」與「還看得到」,不是一個做不到的寬度目標。
+  const landscapeBoard = await page.locator('canvas.board-canvas').boundingBox();
+  check('橫向時棋盤仍然看得到且用滿可用高度',
+    landscapeBoard != null && landscapeBoard.width >= 60 && landscapeBoard.height >= 150,
+    landscapeBoard ? `${Math.round(landscapeBoard.width)}x${Math.round(landscapeBoard.height)}` : 'null');
+  // ★ 迴歸:手機橫放時那排備援鈕(⟲ HOLD ⤓ ⟳ ▼)不可以消失 ——
+  //   0916 一度想把桌機版面的門檻降到 600px,那會連帶把它藏掉。
+  const padButtons = await page.locator('.touch-pad button').count();
+  const padVisible = await page.evaluate(() => {
+    const pad = document.querySelector('.touch-pad');
+    return pad ? getComputedStyle(pad).display !== 'none' : false;
+  });
+  check('手機橫放時觸控備援鈕還在', padButtons === 5 && padVisible, `${padButtons} 顆 / 顯示=${padVisible}`);
+  if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/landscape.png` });
 
   await browser.close();
 

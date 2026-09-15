@@ -184,11 +184,24 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 }
 .side-controls button {
   min-width: 0;
+  /* 0916 手機體檢:這一排(暫停/悔一步/設定/滑鼠拖曳/重啟)實測只有 30px 高,
+     而同一份 CSS 的 .header-btn 早就寫了「40px 是觸控目標下限」—— 這裡是漏掉,不是刻意。 */
+  min-height: 44px;
   padding: 7px 8px;
   white-space: normal;
   line-height: 1.15;
 }
 
+/* ⚠ 0916:手機體檢建議把這個門檻從 900px 降到 600px(理由是「橫放時棋盤只有 75px 寬,
+   浪費八成螢幕」)。**實測後決定不改**,兩個原因:
+   ①棋盤在橫向是**受高度**限制,不是被側欄擠的 —— 844×390 量到的 74×186 已經用滿了
+     可用高度(1fr 就是 186px),而 8×20 的盤寬高比是 0.4 ⇒ 就算整個畫面高度都給它,
+     也只能到 156px 寬。降門檻對棋盤寬度**幾乎沒有幫助**。
+   ②這一段最後一行會 `.touch-pad { display: none }` —— 那是手機唯一的
+     ⟲ / HOLD / ⤓ / ⟳ / ▼ 備援按鈕。降到 600px 等於讓「手機橫放」的人整排鈕消失,
+     為了一個沒效果的改動換來一個真的退步。
+   真要在橫向給棋盤更多空間,得動的是「橫向時把標題列與 HUD 收起來」,那是版面重做,
+   不是改一個數字 —— 已進 roadmap。 */
 @media (min-width: 900px) and (orientation: landscape) {
   .layout {
     grid-template-columns: minmax(130px, 170px) minmax(0, 1fr) minmax(140px, 190px);
@@ -386,11 +399,14 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .overlay .row { display: flex; gap: 8px; justify-content: center; }
 
 .settings {
-  position: absolute;
+  /* fixed 而不是 absolute:面板比畫面高的時候,absolute 會被祖先的捲動位置帶著跑 */
+  position: fixed;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding: 10px;
+  overflow-y: auto;
   background: rgba(7, 9, 26, 0.86);
   backdrop-filter: blur(6px);
   z-index: 20;
@@ -399,12 +415,38 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 22px;
+  padding: 0 22px 22px;
   min-width: 280px;
   max-width: 360px;
   width: 86%;
+  /* ★ 0916 手機體檢紅燈:面板總高 903px 對上 844px 的直向畫面、676px 對上 390px 的橫向畫面
+     ⇒ 唯一的「關閉」鈕在螢幕外(橫向要再滑將近兩個畫面高),小孩點進設定就出不來。
+     修法:卡片自己可捲 + 頂端一條 sticky 的 ✕,不管捲到哪裡都看得到出口。 */
+  max-height: calc(100dvh - 20px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
-.settings h2 { margin: 0 0 14px; font-size: 18px; }
+.settings-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 -22px 14px;
+  padding: 12px 22px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.settings-close {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 16px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.settings h2 { margin: 0; font-size: 18px; }
 .settings .field { margin-bottom: 14px; }
 .settings .field label {
   display: flex;
@@ -486,4 +528,43 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   20%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
   80%  { opacity: 1; }
   100% { opacity: 0; transform: translate(-50%, -8px); }
+}
+
+
+/* ── 0916 新增 ─────────────────────────────────────────────────────────── */
+
+/* 🎨 聖經皮的副標（經典皮不顯示） */
+.app-subtitle {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* ↩ 悔一步：用完或不能悔時明顯變暗，不要讓人一直按一顆沒有反應的鈕 */
+.undo-btn:disabled {
+  opacity: 0.4;
+}
+
+/* 🧩 殘局狀態列 */
+.puzzle-bar .link-btn {
+  min-height: 32px;
+  padding: 4px 10px;
+  margin-left: 6px;
+  font-size: 12px;
+}
+
+/* 🧩 / 🎨 設定面板裡的兩排選項 */
+.settings .skin-options {
+  grid-template-columns: repeat(2, 1fr);
+}
+.settings .puzzle-options button:disabled {
+  opacity: 0.4;
+}
+
+/* HOLD / NEXT 的拖曳抓取區：0916 手機體檢量到 42px，補到觸控下限 */
+.draggable-mini {
+  min-width: 44px;
 }

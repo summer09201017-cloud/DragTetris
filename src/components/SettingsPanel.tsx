@@ -2,6 +2,14 @@ import { useEffect, useState } from 'react';
 import { audio } from '../audio/AudioManager';
 import { BOARD_WIDTH_OPTIONS } from '../game/constants';
 import type { GameMode } from '../game/types';
+import { SKINS, SKIN_IDS, type SkinId } from '../skins';
+import type { Puzzle } from '../puzzles';
+
+const TIER_NAMES: Record<Puzzle['tier'], string> = {
+  warmup: '暖身',
+  standard: '標準',
+  challenge: '挑戰'
+};
 
 /** 三種拖曳放置規則。順序 = 由淺入深,預設落在第一個。 */
 const MODE_OPTIONS: ReadonlyArray<{ id: GameMode; name: string; note: string }> = [
@@ -31,6 +39,12 @@ interface Props {
   challengeKind: 'free' | 'daily' | 'seed';
   challengeSeedText: string;
   today: string;
+  skin: SkinId;
+  puzzleSet: (Puzzle | null)[] | null;
+  puzzleSolvedIds: string[];
+  onSkinChange: (id: SkinId) => void;
+  onOpenPuzzles: () => void;
+  onStartPuzzle: (index: number) => void;
   onStartDaily: () => void;
   onLeaveChallenge: () => void;
   onBoardWidthChange: (width: number) => void;
@@ -45,6 +59,12 @@ export function SettingsPanel({
   challengeKind,
   challengeSeedText,
   today,
+  skin,
+  puzzleSet,
+  puzzleSolvedIds,
+  onSkinChange,
+  onOpenPuzzles,
+  onStartPuzzle,
   onStartDaily,
   onLeaveChallenge,
   onBoardWidthChange,
@@ -57,12 +77,89 @@ export function SettingsPanel({
     return audio.subscribe(setS);
   }, []);
 
+  // ⌨ Esc 關閉 —— 0916 手機體檢抓到「打開設定就出不來」(橫向時「關閉」鈕
+  //   在螢幕外兩個畫面高的地方),鍵盤這條是桌機的第二條退路。
+  //   手機的退路是下面那顆 sticky 的 ✕(永遠在面板頂端看得到)。
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
+
+  const solved = new Set(puzzleSolvedIds);
 
   return (
     <div className="settings" onClick={onClose}>
       <div className="card" onClick={(e) => e.stopPropagation()}>
-        <h2>設定</h2>
+        <div className="settings-head">
+          <h2>設定</h2>
+          <button type="button" className="settings-close" onClick={onClose} aria-label="關閉設定">✕</button>
+        </div>
+
+        <div className="field">
+          <label>
+            <span>🎨 主題皮膚</span>
+            <span>{SKINS[skin]?.label ?? '經典街機'}</span>
+          </label>
+          <div className="segmented skin-options" role="group" aria-label="主題皮膚">
+            {SKIN_IDS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={skin === id ? 'active' : ''}
+                aria-pressed={skin === id}
+                onClick={() => onSkinChange(id)}
+              >
+                {SKINS[id].label}
+              </button>
+            ))}
+          </div>
+          <p className="field-note">
+            聖經皮把方塊換成石頭與泥磚，消行時出現和合本經文（每一句都查過出處）。
+            玩法完全一樣，隨時可以切回來，也不會影響紀錄。
+          </p>
+        </div>
+
+        <div className="field">
+          <label>
+            <span>🧩 每日殘局</span>
+            <span>{today}</span>
+          </label>
+          {puzzleSet ? (
+            <>
+              <div className="segmented puzzle-options" role="group" aria-label="今日殘局">
+                {puzzleSet.map((puzzle, index) => (
+                  <button
+                    key={puzzle?.id ?? `empty-${index}`}
+                    type="button"
+                    disabled={!puzzle}
+                    className={puzzle && solved.has(puzzle.id) ? 'active' : ''}
+                    onClick={() => onStartPuzzle(index)}
+                  >
+                    {puzzle ? TIER_NAMES[puzzle.tier] : '—'}
+                    {puzzle && solved.has(puzzle.id) ? ' ✓' : ''}
+                  </button>
+                ))}
+              </div>
+              <p className="field-note">
+                今天三題，全世界同一組。把盤面清乾淨就過關 ——
+                方塊只有那幾顆，放錯就清不掉，可以按「悔一步」或重來。
+              </p>
+            </>
+          ) : (
+            <>
+              <button type="button" className="wide-btn" onClick={onOpenPuzzles}>
+                看今天的三題
+              </button>
+              <p className="field-note">
+                固定用「塞縫」規則出題 —— 這一款才做得出「只有拖曳塞得進去」的洞。
+              </p>
+            </>
+          )}
+        </div>
 
         <div className="field">
           <label>

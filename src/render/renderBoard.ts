@@ -1,4 +1,7 @@
-import { BOARD_H, BUFFER_H, COLORS } from '../game/constants';
+import { BOARD_H, BUFFER_H } from '../game/constants';
+// 🎨 顏色改由皮膚決定(0916)。皮膚一次只有一個,所以用模組層的 active,
+//    不必把 skin 一路傳過 renderBoard / renderMini / renderQueue 三個呼叫點。
+import { activeSkin, pieceColor } from '../skins';
 import { blocksOf } from '../game/pieces';
 import type { GameState, Piece, PieceType, Rotation } from '../game/types';
 import { getGhost } from '../game/engine';
@@ -54,7 +57,7 @@ function parseHex(s: string): [number, number, number] {
 }
 
 function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, size: number) {
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.strokeStyle = activeSkin().gridLine;
   ctx.lineWidth = 1;
   for (let x = 1; x < w; x++) {
     ctx.beginPath();
@@ -71,7 +74,7 @@ function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, size: num
 }
 
 function drawPiece(ctx: CanvasRenderingContext2D, p: Piece, size: number, ghost = false) {
-  const color = COLORS[p.type];
+  const color = pieceColor(p.type);
   for (const [dx, dy] of blocksOf(p.type, p.rotation)) {
     const x = p.x + dx;
     const y = p.y + dy - BUFFER_H; // shift to visible coords
@@ -100,7 +103,7 @@ export function renderBoard(canvas: HTMLCanvasElement, state: GameState): void {
   ctx.clearRect(0, 0, cssW, cssH);
 
   // playfield bg
-  ctx.fillStyle = '#07091a';
+  ctx.fillStyle = activeSkin().boardBg;
   ctx.fillRect(ox, oy, w, h);
 
   ctx.save();
@@ -112,7 +115,7 @@ export function renderBoard(canvas: HTMLCanvasElement, state: GameState): void {
     for (let x = 0; x < boardWidth; x++) {
       const cell = state.board[y][x];
       if (cell !== 0) {
-        drawBlock(ctx, x, y - BUFFER_H, size, COLORS[cell as PieceType]);
+        drawBlock(ctx, x, y - BUFFER_H, size, pieceColor(cell as PieceType));
       }
     }
   }
@@ -180,7 +183,7 @@ export function renderMini(
   ctx.translate(ox, oy);
   if (dim) ctx.globalAlpha = 0.4;
   for (const [x, y] of blocks) {
-    drawBlock(ctx, x, y, size, COLORS[type]);
+    drawBlock(ctx, x, y, size, pieceColor(type));
   }
   ctx.restore();
 }
@@ -216,7 +219,7 @@ export function renderQueue(canvas: HTMLCanvasElement, queue: PieceType[], count
     ctx.save();
     ctx.translate(ox, oy);
     for (const [x, y] of blocks) {
-      drawBlock(ctx, x, y, size, COLORS[type]);
+      drawBlock(ctx, x, y, size, pieceColor(type));
     }
     ctx.restore();
   }

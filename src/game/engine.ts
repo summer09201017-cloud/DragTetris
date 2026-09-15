@@ -224,8 +224,63 @@ export function createInitialState(
     lastKickIndex: 0,
     softDropping: false,
     clearAnim: null,
-    rngState: rng2
+    rngState: rng2,
+    puzzle: false
   };
+}
+
+/**
+ * 🧩 殘局的起始盤面(0916)。
+ *
+ * 與一般開局的差別只有三件事,其餘完全共用同一顆引擎:
+ *   1. `current: null` —— 殘局沒有會自己往下掉的方塊,所有方塊都從托盤拖進去
+ *      (tickGravity 開頭就 `if (!state.current) return`,所以不需要另做一條時間軸)。
+ *   2. `puzzle: true` —— 佇列有限,放完就沒了,不從袋子補牌。
+ *   3. mode 固定 'support'(塞縫):殘局的洞常常在突出物下面,
+ *      gravity 會把方塊直接掉到底、根本放不進去;creative 則毫無限制、沒有挑戰。
+ *
+ * ⚠ board 會被淺複製一層(每一列 slice),呼叫端之後改自己的陣列不會影響這局。
+ */
+export function createPuzzleState(
+  board: Board,
+  queue: PieceType[],
+  boardWidth: number
+): GameState {
+  const normalizedWidth = normalizeBoardWidth(boardWidth);
+  return {
+    mode: 'support',
+    boardWidth: normalizedWidth,
+    board: board.map(row => row.slice()),
+    current: null,
+    hold: null,
+    canHold: false,
+    queue: [...queue],
+    bag: [],
+    score: 0,
+    lines: 0,
+    level: 1,
+    combo: -1,
+    maxCombo: 0,
+    pcCount: 0,
+    backToBack: false,
+    status: 'playing',
+    lastClear: null,
+    gravityAcc: 0,
+    lockTimer: 0,
+    lockResets: 0,
+    onGround: false,
+    lastMoveWasRotate: false,
+    lastKickIndex: 0,
+    softDropping: false,
+    clearAnim: null,
+    rngState: 1,
+    puzzle: true
+  };
+}
+
+/** 盤面全空＝殘局解開了。 */
+export function isBoardEmpty(board: Board): boolean {
+  return isPerfectClear(board);
 }
 
 // Refill queue from bag(s), generating new bags as needed.
@@ -517,7 +572,8 @@ function placeExternalPiece(
     softDropping: false
   };
 
-  if (source === 'next') {
+  // 🧩 殘局的佇列是有限的：題目就是那幾顆方塊，補牌會讓「清乾淨」永遠達不到。
+  if (source === 'next' && !next.puzzle) {
     next = refillQueue(next);
   }
 
