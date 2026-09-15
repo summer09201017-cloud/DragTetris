@@ -64,6 +64,9 @@ async function main() {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   // 預設 30 秒太長:這支每個「找不到就是紅燈」的判斷都不該等那麼久,疊起來像死當。
   page.setDefaultTimeout(6000);
+  // ★ 導覽要分開給：6 秒對本機 preview 綽綽有餘，但打線上第一發冷請求常常不夠
+  //   ⇒ 會把「網路慢」讀成「網站壞了」（實測跡過）。
+  page.setDefaultNavigationTimeout(45000);
 
   const consoleErrors = [];
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
