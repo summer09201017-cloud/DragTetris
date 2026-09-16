@@ -238,6 +238,24 @@ body.mfs-imm.mfs-fold :is(.hud-stack,.touch-pad,.side-controls){display:none!imp
   body.mfs-imm.mfs-fold #mfsBar { top: 5px; bottom: auto; }
 }
 
+/* ★★ 0916 隊友(0916-hfpc-minesweeper)警告「浮動工具列會蓋住畫布偷走觸控」後實測:
+   直向 0 點被偷(工具列待在棋盤上方那條 54px 橫帶裡),但**橫向 6.3%** ——
+   橫向棋盤只有 137px 寬、置中,而工具列 102px 寬也置中,正好整片壓在棋盤頂端。
+   本作是「把方塊拖到盤上任一格」,壓住頂端就是壓住落點,不是美感問題。
+   (這正是本 repo 自己 silent-failure §61② 那條:目視與截圖都看不出來,
+    要用 elementFromPoint 鋪點陣去量。)
+   ⇒ 橫向時棋盤左右各有約 350px 純空白,工具列挪到左下角,一點都不擋。 */
+@media (orientation: landscape) {
+  body.mfs-imm #mfsBar,
+  body.mfs-imm.mfs-fold #mfsBar {
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    right: auto;
+    bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    top: auto;
+    transform: none;
+  }
+}
+
 </style>
 <div id="mfsBar" role="toolbar" aria-label="全螢幕工具列">
   <button type="button" id="mfsFold" aria-expanded="true" title="收起工具列(主畫面看得更清楚)">▼ 收起</button>
