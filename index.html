@@ -79,6 +79,7 @@
 ;(function () {
   // 最新的放最前面。改版只要在這裡插一筆，徽章會自己跟上。
   var APP_VERSIONS = [
+    { v: 'v4.2', d: '2026-09-16', t: '手機全螢幕真的會變大了：按 ⛶ 之後 HOLD／分數／NEXT 收成上方一條窄橫帶，棋盤從佔螢幕 44.6% 變成 70.3%（面積大 58%）；工具列可用 ▼ 收起、✕ 隨時離開全螢幕' },
     { v: 'v4.1', d: '2026-09-16', t: '手機健檢修正:橫向時標題列與 HUD 浮到兩側空白，棋盤高度 178→261px（寬度 +47%）；五顆備援鈕與大廳/全螢幕鈕 40→44px；版號徽章不再壓住按鈕' },
     { v: 'v4', d: '2026-09-16', t: '每日殘局（每天三題，出題時就用遊戲本身的規則證明過解得開）、悔一步（一局 3 次）、聖經主題皮膚（石頭與泥磚＋和合本經文）、設定面板加上永遠看得到的關閉鈕' },
     { v: 'v3', d: '2026-09-15', t: '拖曳可轉向（點一下托盤轉 90°，桌機拖曳中也能用 ↑ / Z / X）、每日挑戰與題號連結（?daily / ?seed=）' },
@@ -112,5 +113,221 @@
   setTimeout(function () { badge.style.opacity = '.2'; }, 10000);
 })();
 </script>
+<!-- mfs-collapsible-zoom v1 : begin -->
+<style id="mfsBarStyle">
+/* mfs-collapsible-zoom v1 —— 勿手改;要改請改 skills/force-landscape-pwa/patches/add-collapsible-zoom.mjs 後重打 */
+#mfsBar{display:none}
+body.mfs-imm #mfsBar{
+  display:flex;align-items:center;gap:6px;
+  position:fixed;z-index:2147482500;
+  bottom:calc(4px + env(safe-area-inset-bottom,0px));
+  left:50%;transform:translateX(-50%);
+  padding:3px 5px;border-radius:12px;
+  border:1px solid rgba(255,255,255,.34);
+  background:rgba(9,15,19,.62);
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+  /* 別用 opacity 調淡:iOS 上半透明的鈕很難按準。用實心小尺寸 */
+}
+body.mfs-imm #mfsBar button{
+  /* 44px 是觸控下限(iOS HIG / WCAG 2.5.5)—— 這排是全螢幕時唯一的出口,更不能按不準 */
+  min-width:44px;min-height:44px;padding:0 10px;
+  font-size:15px;line-height:1;
+  /* ⚠ 不加 nowrap 的話「▼ 收起」會斷成兩行、把工具列撐高又變醜(0916 實測) */
+  white-space:nowrap;
+  border:0;border-radius:9px;background:transparent;color:#fff;cursor:pointer;
+}
+body.mfs-imm #mfsBar button:active{background:rgba(255,255,255,.18)}
+/* 收起後:整條縮成一小塊,主畫面拿回最多空間 —— 這就是收起式存在的理由。
+   ★★ 但「✕ 離開全螢幕」**絕對不能一起藏掉**。
+      0916 實測:把它藏起來 + 預設就是收起 ⇒ 使用者一進全螢幕,畫面上零出口。
+      這正是 3D-Xiangqi 被退件的那一條(「也沒有取消全螢幕或回到前一頁的選單」)。
+      收起只該把「字」收掉,不該把「出口」收掉 ⇒ 折疊態改成兩顆 44px 的圖示鈕。 */
+body.mfs-imm.mfs-fold #mfsBar{padding:2px 3px;background:rgba(9,15,19,.5)}
+body.mfs-imm.mfs-fold #mfsBar button{min-width:44px;padding:0 6px;font-size:16px}
+body.mfs-imm :is(.app-header,#appVerBadge){display:none!important}
+body.mfs-imm.mfs-fold :is(.hud-stack,.touch-pad,.side-controls){display:none!important}
+/* ── 俄羅斯方塊・沉浸版面 ───────────────────────────────────────────
+   病灶(0916 實測 390×844):.layout 是 `52px 1fr 52px` 三欄,
+   HOLD / NEXT 兩根側欄吃掉 104px = 螢幕寬的 27%,
+   而 8×20 的盤寬高比 0.4 ⇒ 手機直向時棋盤是**受寬度**限制的。
+   只把上下的殼收掉沒有用(高度本來就有剩),一定要把那 104px 拿回來。
+
+   ⚠ 側欄不能直接藏:NEXT 那一格是本作招牌玩法的**托盤**(從托盤把方塊拖到盤上),
+     藏掉遊戲就不能玩了。
+   ⚠⚠ 也不能用 position:absolute 把它們浮到棋盤上 —— 第一版就是這樣寫的,
+     實測出來 NEXT 整塊蓋住棋盤右上角三列四欄(方塊正好從那裡落下)。
+     正解:讓它們跟分數列**共用第一列的同一格**,用 justify-self 分左/中/右,
+     再把 .mini 改成橫躺。這樣它們佔的是「上方一條 54px 的橫帶」,一格棋盤都不擋。 */
+
+/* 三欄 → 單欄:棋盤吃滿寬度 */
+body.mfs-imm .layout {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  padding: 4px;
+  gap: 4px;
+}
+body.mfs-imm .stage { grid-column: 1; grid-row: 2; }
+body.mfs-imm .side-controls { grid-column: 1; }
+
+/* 第一列同一格,三個東西分左中右 —— 不重疊、不浮在棋盤上 */
+body.mfs-imm .panel-left,
+body.mfs-imm .panel-right,
+body.mfs-imm .hud-stack {
+  grid-column: 1;
+  grid-row: 1;
+  width: auto;
+  height: auto;
+}
+body.mfs-imm .panel-left { justify-self: start; }
+body.mfs-imm .panel-right { justify-self: end; }
+body.mfs-imm .hud-stack { justify-self: center; width: min(150px, 38vw); }
+
+/* HOLD / NEXT 橫躺,才不會把第一列撐高 */
+body.mfs-imm .panel-left,
+body.mfs-imm .panel-right {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+/* ⚠ .mini 原本是 display:block —— 只寫 flex-direction:row 是**完全空轉**的
+   (第二版就是漏了這行,第一列被 NEXT 撐到 120px,棋盤反而比沒按 ⛶ 還小)。 */
+body.mfs-imm .panel-left .mini,
+body.mfs-imm .panel-right .mini {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  height: auto;
+  padding: 2px 5px;
+}
+body.mfs-imm .mini-title {
+  font-size: 9px;
+  white-space: nowrap;
+}
+/* canvas 有自己的內在尺寸,用 max-height 讓它等比縮;width:auto 才不會被拉扁 */
+body.mfs-imm .panel-left canvas,
+body.mfs-imm .panel-right canvas {
+  max-height: 40px;
+  width: auto;
+}
+/* 托盤的拖曳把手是唯一的操作入口,縮到按不準就白改了 */
+body.mfs-imm .draggable-mini {
+  min-width: 42px;
+  min-height: 42px;
+}
+body.mfs-imm .score-grid { font-size: 10px; }
+
+/* 工具列要有自己的車道,不然它會直接壓在備援鈕列(⟲ HOLD ⤓ ⟳ ▼)上面 */
+body.mfs-imm .app {
+  padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px));
+}
+
+/* 收起後:分數列與兩排鈕都收掉(在 --fold 裡),第一列中間空出來
+   ⇒ 工具列改停在那片空白,不必再從棋盤挖 54px 給它。棋盤因此拿回整個高度。 */
+body.mfs-imm.mfs-fold .app { padding-bottom: env(safe-area-inset-bottom, 0px); }
+body.mfs-imm.mfs-fold #mfsBar { top: 5px; bottom: auto; }
+
+</style>
+<div id="mfsBar" role="toolbar" aria-label="全螢幕工具列">
+  <button type="button" id="mfsFold" aria-expanded="true" title="收起工具列(主畫面看得更清楚)">▼ 收起</button>
+  <button type="button" id="mfsExit" title="離開全螢幕">✕ 離開全螢幕</button>
+</div>
+<script>
+/* mfs-collapsible-zoom v1 */
+(function () {
+  try {
+    /* 嵌在別人站裡當關卡時不要搶宿主的版面 */
+    if (window.self !== window.top) { var b0 = document.getElementById('mfsBar'); if (b0) b0.remove(); return; }
+
+    /* backup-chain:ok —— 'mfs.fold' 是**裝置層偏好**(這支手機的工具列收著還是開著),
+       不是使用者資料:掉了下次進來就是預設的「開著」,零損失、會自動重建。
+       刻意**不**接進匯出/匯入 —— 把它寫進備份,反而會把平板的收合狀態帶到手機上。 */
+    var KEY = 'mfs.fold';
+    var bar = document.getElementById('mfsBar');
+    var foldBtn = document.getElementById('mfsFold');
+    var exitBtn = document.getElementById('mfsExit');
+    var adoptSel = ".app-header .header-btn[aria-pressed]";
+
+    /* ⚠ Safari 私密模式讀 localStorage 會**丟例外**,不是回 null。
+       不包 try/catch 的話這一行就把後面所有 addEventListener 帶走,整排鈕靜靜失效。 */
+    var FOLD_DEFAULT = true;
+    var folded = FOLD_DEFAULT;
+    try {
+      var saved = window.localStorage.getItem(KEY);
+      if (saved === '1' || saved === '0') folded = saved === '1'; /* 使用者自己選過就聽他的 */
+    } catch (e) {}
+
+    var isFs = function () { return !!(document.fullscreenElement || document.webkitFullscreenElement); };
+    var imm = false;
+
+    function refit() {
+      /* canvas / Three.js 多半聽 resize 重算尺寸;版面剛變要等一幀再發,不然量到舊尺寸 */
+      requestAnimationFrame(function () {
+        try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+      });
+    }
+
+    function paint() {
+      try {
+        document.body.classList.toggle('mfs-imm', imm);
+        document.body.classList.toggle('immersive', imm); /* 沿用 v1 的類名,既有站的 CSS 才吃得到 */
+        document.body.classList.toggle('mfs-fold', imm && folded);
+        if (foldBtn) {
+          foldBtn.textContent = folded ? '▲' : '▼ 收起';
+          foldBtn.title = folded ? '展開工具列' : '收起工具列(主畫面看得更清楚)';
+          foldBtn.setAttribute('aria-label', foldBtn.title);
+          foldBtn.setAttribute('aria-expanded', String(!folded));
+        }
+        /* 收起時只收「字」,不收「出口」—— 圖示鈕留著,不然全螢幕就沒得退 */
+        if (exitBtn) {
+          exitBtn.textContent = folded ? '✕' : '✕ 離開全螢幕';
+          exitBtn.setAttribute('aria-label', '離開全螢幕');
+        }
+      } catch (e) {}
+      refit();
+    }
+
+    if (foldBtn) foldBtn.addEventListener('click', function () {
+      folded = !folded;
+      try { window.localStorage.setItem(KEY, folded ? '1' : '0'); } catch (e) {}
+      paint();
+    });
+
+    if (exitBtn) exitBtn.addEventListener('click', function () {
+      try {
+        var out = document.exitFullscreen || document.webkitExitFullscreen;
+        if (isFs() && out) { var q = out.call(document); if (q && q.catch) q.catch(function () {}); }
+      } catch (e) {}
+      /* iPhone Safari 沒有網頁全螢幕 ⇒ 上面那段不會發生任何事,
+         沉浸樣式得自己收,不然使用者按了「離開」卻沒反應。 */
+      imm = false;
+      paint();
+    });
+
+    /* 真全螢幕的裝置(Android/桌機):狀態一律以 fullscreenchange 為準,
+       這樣使用者按 Esc / 系統手勢退出時,沉浸樣式也會跟著收。 */
+    var supports = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+    if (supports) ['fullscreenchange', 'webkitfullscreenchange'].forEach(function (ev) {
+      document.addEventListener(ev, function () { imm = isFs(); paint(); });
+    });
+
+    /* 認養站上原有的那顆 ⛶:
+       ①iPhone 沒有 fullscreenchange,只能靠這條才進得了沉浸
+       ②用事件委派而不是直接綁那顆鈕 —— React/Vue 重繪會換掉節點,直接綁會脫鉤 */
+    if (adoptSel) document.addEventListener('click', function (ev) {
+      try {
+        var t = ev.target && ev.target.closest && ev.target.closest(adoptSel);
+        if (!t) return;
+        if (supports) return; /* 支援全螢幕的裝置交給 fullscreenchange,免得按一下切兩次 */
+        imm = !imm;
+        setTimeout(paint, 0);
+      } catch (e) {}
+    }, true);
+
+    paint();
+  } catch (e) { /* 補丁自己壞掉也不能弄壞遊戲 */ }
+})();
+</script>
+<!-- mfs-collapsible-zoom v1 : end -->
 </body>
 </html>
