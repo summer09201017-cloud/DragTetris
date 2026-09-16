@@ -6,6 +6,56 @@
   README.md              = 功能清單、驗證方式、維護鐵則、部署、鍵盤對應
 
 
+★★★★★ 2026-09-16 晚(v4.2 → v4.3・0916-<俄羅斯方塊的全螢幕問題> 場)
+--------------------------------------------------------------------------------
+使用者原話:「俄羅斯方塊的手機版全螢幕放大後,跟放大前,差不多,沒有真正全螢幕放大,
+下方選單也不能收起來」。實測證實:按 ⛶ 前後棋盤都是 242×606,Δ=0 ——
+那顆鈕(App.tsx 的 requestFullscreen)只收掉**瀏覽器的網址列**,本站自己的殼一格沒收。
+
+■ 病灶不在上下,在**左右**
+  .layout 是 `52px 1fr 52px` 三欄,HOLD / NEXT 兩根側欄吃掉 104px = 螢幕寬的 27%,
+  而 8×20 的盤寬高比 0.4 ⇒ 手機直向時棋盤是**受寬度**限制的。只收上下的殼,一分都換不到。
+
+■ 修法(全部靠 index.html 尾端的 mfs-collapsible-zoom 區塊 + 那段沉浸 CSS,沒動引擎)
+  沉浸時三欄變單欄,HOLD / 分數 / NEXT 用 justify-self 排進上方一條 54px 橫帶。
+  ⚠ 側欄**不能直接藏** —— NEXT 那格是本作招牌玩法的托盤(從托盤把方塊拖到盤上)。
+  ⚠ 也**不能用 position:absolute 浮到棋盤上** —— 第一版這樣寫,NEXT 整塊蓋住右上角三列四欄。
+  ⚠ `.mini` 原本是 display:block,只寫 flex-direction:row **完全空轉**(第二版踩到,
+    第一列被撐到 120px,棋盤反而比不按 ⛶ 還小 44.6% → 34.7%)。
+  ⚠ `--fold-default on`:展開態多一條工具列車道會比原樣還小 ⇒ 按 ⛶ 直接進收起態。
+  ⚠ 收起可以收「字」,**絕不能收「出口」**:第一版把 ✕ 離開全螢幕一起藏掉 ⇒ 零出口。
+
+■ 量測(headless 固定視窗;沒有網址列 ⇒ 成長全是 App 自己收殼換來的)
+  直向 44.6% →(⛶)→ **70.3%**(面積 +58%)   展開態 42.2%
+  橫向  8.3% →(⛶)→ **14.3%**              展開態 8.3%(與原樣持平)
+  ★ 橫向只有 8.3% 是 v4.1 就有的盤面比例天花板(8×20 在 844×390 最寬只到 156px),不是這輪造成的。
+
+■ 兩個「測試全綠也看不到」的迴歸(都是隊友提醒後補驗才抓到)
+  ㈠ 沉浸 CSS 沒分方向 ⇒ 跟 v4.1 既有的 @media (orientation: landscape) 打架,
+     橫向展開態把棋盤壓成 63×157 = 螢幕的 3%(比不按 ⛶ 還慘)。
+     單元 110 綠 + 真瀏覽器 69 綠全沒咬到 —— **兩套驗收都只跑直向**。
+     ⇒ 版面重排整段包進 @media (orientation: portrait)。
+  ㈡ 浮動工具列偷走棋盤觸控:elementFromPoint 鋪 12×12 點陣量,
+     直向 0/144、橫向 **9/144 = 6.3%** 被接走(橫向棋盤 137px 寬且置中,工具列 102px 也置中)。
+     **面積數字前後完全沒變,它照不出這種病。** ⇒ 橫向工具列挪到左下角那片 350px 空白,6.3% → 0%。
+
+■ v4.3(使用者第二次實機回報:「手機實機開俄羅斯方塊,沒有簡歷」)
+  簡歷其實在,但三件事疊起來等於沒有:①「看改版簡歷」排在棋盤欄數後面,實機量到 y=664
+  ②右下徽章 146×11px、10 秒後淡到 opacity .2 且 pointer-events:none(刻意的,它一可點
+    就會偷走下方 ⟳ ▼ 的觸控)③**v4.2 把 #appVerBadge 放進沉浸的 --hide**。
+  ⇒ 版本+簡歷移到設定面板最上面(SettingsPanel.tsx,y=664 → **y=113**)、徽章退出 --hide。
+
+■ 怎麼重打補丁(改沉浸版面就重跑這支,別手改 index.html 尾端那區塊)
+  <skills>/plugins/hfpc-skills/skills/force-landscape-pwa/patches/add-collapsible-zoom.mjs
+  參數:--force --fold-default on --adopt ".app-header .header-btn[aria-pressed]"
+        --hide ".app-header" --fold ".hud-stack,.touch-pad,.side-controls" --css-file <那份沉浸 CSS>
+
+■ 驗收:npm test 110 綠 / BASE=<url> node scripts/verify-browser.mjs 69 綠;直橫兩向 + 觸控點陣各驗一次。
+■ 部署:npm run build 之後 npx wrangler pages deploy dist --project-name dragtetris --branch main
+  ⚠ repo 在 GitHub 已改名為 DragTetris(推送靠重導仍可用,本機 remote 還寫舊名)。
+  ⚠ 本 clone 在含中文的路徑下,Node 24 的 fs.rm 會硬殺整個進程(零訊息、try/catch 接不到)
+    ⇒ 清 dist 要用 bash 的刪除指令,不要用任何 Node 的 fs.rm*。根治是把 repo 搬到純 ASCII 路徑。
+
 ★★★★★ 2026-09-16(v4)
 --------------------------------------------------------------------------------
 使用者從 0915 列的「極高 CP」清單挑了三項,一次做完並上線。
