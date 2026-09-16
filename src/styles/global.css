@@ -60,11 +60,12 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 }
 .app-header h1 { font-size: 14px; margin: 0; letter-spacing: 1px; flex: 1; text-align: center; }
 
-/* ← 大廳 / ⛶ 全螢幕:標題列兩端。刻意 min-height 40px —— 觸控目標下限。 */
+/* ← 大廳 / ⛶ 全螢幕:標題列兩端。
+   0916 手機健檢:40px **不是**觸控下限,44px 才是(iOS HIG / WCAG 2.5.5)⇒ 改成 44。 */
 .header-btn {
   padding: 6px 10px;
   font-size: 13px;
-  min-height: 40px;
+  min-height: 44px;
   min-width: 44px;
   flex: 0 0 auto;
   white-space: nowrap;
@@ -362,7 +363,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: var(--bg-2);
 }
 .touch-pad button {
-  padding: 10px 0;
+  /* 0916 手機健檢:量到 40px —— 這五顆(⟲ HOLD ⤓ ⟳ ▼)是手機上唯一的備援操作,
+     偏偏是最該按得準的。padding 10 → 12,實測 44px。 */
+  padding: 12px 0;
+  min-height: 44px;
   font-size: 14px;
 }
 
@@ -567,4 +571,95 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 /* HOLD / NEXT 的拖曳抓取區：0916 手機體檢量到 42px，補到觸控下限 */
 .draggable-mini {
   min-width: 44px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   0916 手機健檢紅黃燈修正(DEYI 場線上實測 iPhone 844×390)
+   ───────────────────────────────────────────────────────────── */
+
+/* ⑥ 🟠 版號徽章壓在 ▼ 鈕上(直向還會壓到 ⟳)。
+      它是 pointer-events:none,不會偷走觸控,但視覺上蓋住按鈕文字。
+      ⇒ 抬到觸控備援列之上。用 !important 是因為位置寫在 index.html 的 inline style 裡
+        (那是全艦隊共用的徽章區塊,不改它、只在本站覆蓋)。 */
+/* ⚠ 我第一版把它抬到 66px —— 結果從壓住 ▼ 變成壓住「滑鼠拖曳」與「重啟」,
+   因為底部由下而上是 .touch-pad 然後 .side-controls,兩層都是按鈕。
+   ⇒ 分兩種方向各給一個真的空位,而不是繼續往上推。 */
+
+/* 直向:高度有餘裕(stage 624px)⇒ 讓備援列往上一點,徽章落在它下面的空白 */
+@media (orientation: portrait) {
+  .touch-pad {
+    margin-bottom: 18px;
+  }
+  #appVerBadge {
+    bottom: 2px !important;
+  }
+}
+
+/* ④ 🔴 橫向時棋盤只有 71×178,螢幕約 85% 空白。
+
+   ★ 先講兩條**已經證實沒用的路**,別再走一次(0916-打磚與俄羅斯 場實測):
+     ① 調 `boardHeightScale` 或 canvas 那個 `calc((100dvh - 170px) * 1.56)` —— 沒用。
+        橫向時 calc 算出 343px,而 `min(100%, …)` 的 `100%` 是 stage 的 178
+        ⇒ 綁住的一直是 100%,那個 calc 根本沒參與,改它畫面一動也不動。
+     ② 放寬上面那個 `@media (min-width: 900px) and (orientation: landscape)` —— 更糟。
+        棋盤在橫向是**受高度**限制不是被側欄擠的,降門檻對寬度幾乎沒幫助,
+        而且那段最後一行會 `.touch-pad { display:none }` ⇒ 手機橫放的人整排備援鈕消失。
+
+   ★ 真正有用的是「**把只吃高度、不吃寬度的東西搬到兩側的空白**」:
+     橫向時 stage 有 716px 寬,而棋盤最寬也只到 156px(8/20 的比例 × 可用高度)
+     ⇒ 左右兩邊各有兩百多 px 是純粹浪費的。
+     把標題列與 HUD 改成**浮在那片空白上**,就能把它們原本吃掉的
+     51(header)+ 36(hud)+ 12(gap)≈ 99px 全部還給棋盤。
+     實測 stage 178 → 277、棋盤 71×178 → 約 111×277(寬度 +56%)。
+
+   ⚠ 誠實話:這不是變戲法。橫向的天花板就是 **156px 寬**(高度全給它也只能到這)。
+     要再大只能改棋盤比例,那是玩法改動,不在這一輪。 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .app {
+    position: relative;
+  }
+
+  /* 標題列浮到左上角的空白區:兩顆鈕留著、維持 44px,只把標題文字讓掉 */
+  .app-header {
+    position: absolute;
+    top: var(--safe-top, 0px);
+    left: 0;
+    z-index: 30;
+    width: auto;
+    gap: 6px;
+    padding: 2px 6px;
+    border-bottom: 0;
+    background: transparent;
+  }
+  .app-header h1,
+  .app-subtitle {
+    display: none;
+  }
+
+  /* HUD 浮到右上角的空白區(它是看的、不是按的,擋不到操作) */
+  .hud-stack {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    z-index: 30;
+    width: min(260px, 34vw);
+  }
+
+  /* 第一列(原本給 HUD)歸零,省下來的高度全部流進 stage 的 1fr */
+  .layout {
+    grid-template-rows: 0px minmax(0, 1fr) auto auto;
+  }
+
+  /* 橫向:標題列浮到左上、HUD 浮到右上 ⇒ **頂部中間整片是空的**,
+     徽章放那裡零高度成本,也不會壓到任何按鈕。 */
+  #appVerBadge {
+    top: 6px !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%);
+  }
+
+  /* ⚠ .touch-pad 一定要留著 —— 它是手機唯一的備援操作列,
+     而且有一條常駐迴歸項在守(verify-browser.mjs 第 9 節)。 */
 }
