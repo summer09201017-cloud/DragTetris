@@ -79,6 +79,7 @@
 ;(function () {
   // 最新的放最前面。改版只要在這裡插一筆，徽章會自己跟上。
   var APP_VERSIONS = [
+    { v: 'v4.3', d: '2026-09-16', t: '改版簡歷在手機上找得到了：原本要在設定面板往下捲大半頁（量到 y=664）才看得見，現在是設定打開後的第一項；全螢幕時右下角的版號也不再被藏起來' },
     { v: 'v4.2', d: '2026-09-16', t: '手機全螢幕真的會變大了：按 ⛶ 之後 HOLD／分數／NEXT 收成上方一條窄橫帶，棋盤從佔螢幕 44.6% 變成 70.3%（面積大 58%）；工具列可用 ▼ 收起、✕ 隨時離開全螢幕' },
     { v: 'v4.1', d: '2026-09-16', t: '手機健檢修正:橫向時標題列與 HUD 浮到兩側空白，棋盤高度 178→261px（寬度 +47%）；五顆備援鈕與大廳/全螢幕鈕 40→44px；版號徽章不再壓住按鈕' },
     { v: 'v4', d: '2026-09-16', t: '每日殘局（每天三題，出題時就用遊戲本身的規則證明過解得開）、悔一步（一局 3 次）、聖經主題皮膚（石頭與泥磚＋和合本經文）、設定面板加上永遠看得到的關閉鈕' },
@@ -144,7 +145,7 @@ body.mfs-imm #mfsBar button:active{background:rgba(255,255,255,.18)}
       收起只該把「字」收掉,不該把「出口」收掉 ⇒ 折疊態改成兩顆 44px 的圖示鈕。 */
 body.mfs-imm.mfs-fold #mfsBar{padding:2px 3px;background:rgba(9,15,19,.5)}
 body.mfs-imm.mfs-fold #mfsBar button{min-width:44px;padding:0 6px;font-size:16px}
-body.mfs-imm :is(.app-header,#appVerBadge){display:none!important}
+body.mfs-imm :is(.app-header){display:none!important}
 body.mfs-imm.mfs-fold :is(.hud-stack,.touch-pad,.side-controls){display:none!important}
 /* ── 俄羅斯方塊・沉浸版面 ───────────────────────────────────────────
    病灶(0916 實測 390×844):.layout 是 `52px 1fr 52px` 三欄,

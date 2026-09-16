@@ -99,6 +99,22 @@ export function SettingsPanel({
           <button type="button" className="settings-close" onClick={onClose} aria-label="關閉設定">✕</button>
         </div>
 
+        {/* 版本與改版簡歷放在**最上面**(0916 使用者實機回報「沒有簡歷」)。
+            原本它排在主題/每日殘局/每日挑戰/拖曳規則/棋盤欄數**後面**,手機上量到 y=664
+            —— 要捲過大半個面板才看得到,等於沒有。
+            右下角那顆徽章也救不了:146×11px、10 秒後淡到 opacity .2,而且刻意 pointer-events:none
+            (它一可點就會偷走下方 ⟳ ▼ 兩顆鈕的觸控,見 silent-failure §61②)。 */}
+        <div className="field about-field">
+          <label>
+            <span>版本</span>
+            <span id="settingsVer">{appVersion()}</span>
+          </label>
+          <button type="button" className="wide-btn" onClick={openVersionSheet}>
+            看改版簡歷
+          </button>
+          <p className="field-note">右下角的小字只是標示，不搶遊戲操作。</p>
+        </div>
+
         <div className="field">
           <label>
             <span>🎨 主題皮膚</span>
@@ -235,17 +251,6 @@ export function SettingsPanel({
             ))}
           </div>
           <p className="field-note">每種欄數各自獨立記錄最高分。</p>
-        </div>
-
-        <div className="field about-field">
-          <label>
-            <span>版本</span>
-            <span id="settingsVer">{appVersion()}</span>
-          </label>
-          <button type="button" className="wide-btn" onClick={openVersionSheet}>
-            看改版簡歷
-          </button>
-          <p className="field-note">右下角的小字只是標示，不搶遊戲操作。</p>
         </div>
 
         <div className="field">
