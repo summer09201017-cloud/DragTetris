@@ -159,73 +159,84 @@ body.mfs-imm.mfs-fold :is(.hud-stack,.touch-pad,.side-controls){display:none!imp
      正解:讓它們跟分數列**共用第一列的同一格**,用 justify-self 分左/中/右,
      再把 .mini 改成橫躺。這樣它們佔的是「上方一條 54px 的橫帶」,一格棋盤都不擋。 */
 
+
+/* ★★ 0916 隊友(0916-直式打磚塊)提醒後補驗抓到的迴歸:
+   本站 v4.1 已經有一段 `@media (orientation: landscape) and (max-height:500px)` 在改
+   同一個 .layout 的 grid(標題列與 HUD 浮到兩側)。我的沉浸規則若不分方向,
+   兩套會打架 —— 橫向展開態實測把棋盤壓成 63×157 = 螢幕的 3%,比不按 ⛶ 的 8.3% 還慘。
+   ⇒ 下面整段**只在直向生效**;橫向交還給 v4.1 那套,沉浸在橫向只做「藏殼 + 可收起」。
+   (橫向本身只有 8.3% 是 v4.1 就有的天花板:8×20 的盤在 844×390 裡最寬也只能到 156px,
+    那是盤面比例問題,不在這一輪。) */
+@media (orientation: portrait) {
 /* 三欄 → 單欄:棋盤吃滿寬度 */
-body.mfs-imm .layout {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
-  padding: 4px;
-  gap: 4px;
-}
-body.mfs-imm .stage { grid-column: 1; grid-row: 2; }
-body.mfs-imm .side-controls { grid-column: 1; }
 
-/* 第一列同一格,三個東西分左中右 —— 不重疊、不浮在棋盤上 */
-body.mfs-imm .panel-left,
-body.mfs-imm .panel-right,
-body.mfs-imm .hud-stack {
-  grid-column: 1;
-  grid-row: 1;
-  width: auto;
-  height: auto;
+  body.mfs-imm .layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    padding: 4px;
+    gap: 4px;
+  }
+  body.mfs-imm .stage { grid-column: 1; grid-row: 2; }
+  body.mfs-imm .side-controls { grid-column: 1; }
+  
+  /* 第一列同一格,三個東西分左中右 —— 不重疊、不浮在棋盤上 */
+  body.mfs-imm .panel-left,
+  body.mfs-imm .panel-right,
+  body.mfs-imm .hud-stack {
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    height: auto;
+  }
+  body.mfs-imm .panel-left { justify-self: start; }
+  body.mfs-imm .panel-right { justify-self: end; }
+  body.mfs-imm .hud-stack { justify-self: center; width: min(150px, 38vw); }
+  
+  /* HOLD / NEXT 橫躺,才不會把第一列撐高 */
+  body.mfs-imm .panel-left,
+  body.mfs-imm .panel-right {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+  /* ⚠ .mini 原本是 display:block —— 只寫 flex-direction:row 是**完全空轉**的
+     (第二版就是漏了這行,第一列被 NEXT 撐到 120px,棋盤反而比沒按 ⛶ 還小)。 */
+  body.mfs-imm .panel-left .mini,
+  body.mfs-imm .panel-right .mini {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    height: auto;
+    padding: 2px 5px;
+  }
+  body.mfs-imm .mini-title {
+    font-size: 9px;
+    white-space: nowrap;
+  }
+  /* canvas 有自己的內在尺寸,用 max-height 讓它等比縮;width:auto 才不會被拉扁 */
+  body.mfs-imm .panel-left canvas,
+  body.mfs-imm .panel-right canvas {
+    max-height: 40px;
+    width: auto;
+  }
+  /* 托盤的拖曳把手是唯一的操作入口,縮到按不準就白改了 */
+  body.mfs-imm .draggable-mini {
+    min-width: 42px;
+    min-height: 42px;
+  }
+  body.mfs-imm .score-grid { font-size: 10px; }
+  
+  /* 工具列要有自己的車道,不然它會直接壓在備援鈕列(⟲ HOLD ⤓ ⟳ ▼)上面 */
+  body.mfs-imm .app {
+    padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px));
+  }
+  
+  /* 收起後:分數列與兩排鈕都收掉(在 --fold 裡),第一列中間空出來
+     ⇒ 工具列改停在那片空白,不必再從棋盤挖 54px 給它。棋盤因此拿回整個高度。 */
+  body.mfs-imm.mfs-fold .app { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body.mfs-imm.mfs-fold #mfsBar { top: 5px; bottom: auto; }
 }
-body.mfs-imm .panel-left { justify-self: start; }
-body.mfs-imm .panel-right { justify-self: end; }
-body.mfs-imm .hud-stack { justify-self: center; width: min(150px, 38vw); }
-
-/* HOLD / NEXT 橫躺,才不會把第一列撐高 */
-body.mfs-imm .panel-left,
-body.mfs-imm .panel-right {
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-}
-/* ⚠ .mini 原本是 display:block —— 只寫 flex-direction:row 是**完全空轉**的
-   (第二版就是漏了這行,第一列被 NEXT 撐到 120px,棋盤反而比沒按 ⛶ 還小)。 */
-body.mfs-imm .panel-left .mini,
-body.mfs-imm .panel-right .mini {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-  height: auto;
-  padding: 2px 5px;
-}
-body.mfs-imm .mini-title {
-  font-size: 9px;
-  white-space: nowrap;
-}
-/* canvas 有自己的內在尺寸,用 max-height 讓它等比縮;width:auto 才不會被拉扁 */
-body.mfs-imm .panel-left canvas,
-body.mfs-imm .panel-right canvas {
-  max-height: 40px;
-  width: auto;
-}
-/* 托盤的拖曳把手是唯一的操作入口,縮到按不準就白改了 */
-body.mfs-imm .draggable-mini {
-  min-width: 42px;
-  min-height: 42px;
-}
-body.mfs-imm .score-grid { font-size: 10px; }
-
-/* 工具列要有自己的車道,不然它會直接壓在備援鈕列(⟲ HOLD ⤓ ⟳ ▼)上面 */
-body.mfs-imm .app {
-  padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px));
-}
-
-/* 收起後:分數列與兩排鈕都收掉(在 --fold 裡),第一列中間空出來
-   ⇒ 工具列改停在那片空白,不必再從棋盤挖 54px 給它。棋盤因此拿回整個高度。 */
-body.mfs-imm.mfs-fold .app { padding-bottom: env(safe-area-inset-bottom, 0px); }
-body.mfs-imm.mfs-fold #mfsBar { top: 5px; bottom: auto; }
 
 </style>
 <div id="mfsBar" role="toolbar" aria-label="全螢幕工具列">
@@ -247,6 +258,11 @@ body.mfs-imm.mfs-fold #mfsBar { top: 5px; bottom: auto; }
     var foldBtn = document.getElementById('mfsFold');
     var exitBtn = document.getElementById('mfsExit');
     var adoptSel = ".app-header .header-btn[aria-pressed]";
+    var mountSel = "";
+    /* 掛進站上既有的按鈕列。找不到就留在原地(body 尾)當浮動列,不要整支炸掉 */
+    if (mountSel && bar) {
+      try { var host = document.querySelector(mountSel); if (host) host.appendChild(bar); } catch (e) {}
+    }
 
     /* ⚠ Safari 私密模式讀 localStorage 會**丟例外**,不是回 null。
        不包 try/catch 的話這一行就把後面所有 addEventListener 帶走,整排鈕靜靜失效。 */
