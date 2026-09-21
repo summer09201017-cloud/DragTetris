@@ -32,10 +32,15 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 
 // Touch controls:
 //   horizontal drag      -> move left/right by cell
-//   downward drag        -> soft drop while held
 //   fast downward flick  -> hard drop
 //   tap / double tap     -> rotate CW / CCW
 //   two-finger or hold   -> hold piece
+//
+// ⚠ 拖曳**不做軟降**(0921 使用者回報「用手指碰方塊時,方塊會變快往下降」):
+//   原本「往下拖超過 0.6 格就開軟降」——手指要橫移時幾乎一定會帶一點向下分量,
+//   碰到方塊就等於按住 ▼,玩家以為是 bug。軟降留給 TouchPad 的 ▼ 鈕與鍵盤 ↓,
+//   要快就用快速下滑(硬降)。滑鼠拖曳模式(桌機、要在設定裡打開)同一天第二輪也一起拿掉,
+//   兩種拖曳行為一致。`movedRef.soft` / `clearSoft` 現在只是保險絲:沒有地方再把它設成 true。
 //
 // Optional mouse drag mode:
 //   left-drag on board   -> move the active piece under the cursor
@@ -204,12 +209,7 @@ export function usePointer({
       if (s.mode === 'mouseDrag') {
         e.preventDefault();
         moveMouseDragTo(e, s.grabOffsetX);
-        if (dy > cs * 0.8 && !movedRef.current.soft) {
-          movedRef.current.soft = true;
-          dispatchRef.current({ type: 'softDrop', on: true });
-        } else if (dy < cs * 0.4 && movedRef.current.soft) {
-          clearSoft();
-        }
+        // 滑鼠拖曳同樣不開軟降(0921 第二輪,使用者拍板兩種拖曳一致)。
         movedRef.current.dy = dy;
         return;
       }
@@ -224,12 +224,7 @@ export function usePointer({
         movedRef.current.dx--;
       }
 
-      if (dy > cs * 0.6 && !movedRef.current.soft) {
-        movedRef.current.soft = true;
-        dispatchRef.current({ type: 'softDrop', on: true });
-      } else if (dy < cs * 0.3 && movedRef.current.soft) {
-        clearSoft();
-      }
+      // 向下拖曳只記距離(給放手時判斷是不是硬降的快滑),不開軟降 —— 見檔頭說明。
       movedRef.current.dy = dy;
 
       if (Math.abs(dx) > TAP_DIST || Math.abs(dy) > TAP_DIST) {

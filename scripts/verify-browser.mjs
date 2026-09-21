@@ -174,6 +174,66 @@ async function main() {
   check('硬降五次後畫面沒炸', (await page.locator('.score-grid').innerText()).length > 0);
   check('主控台沒有錯誤', consoleErrors.length === 0, consoleErrors.slice(0, 2).join(' | '));
 
+  // ── 5.1 手指碰方塊不可以變快(0921 使用者實機回報)
+  //   走的是 usePointer 的手勢路徑(滑鼠拖曳模式預設關,所以 page.mouse 也會走這條)。
+  //   慢慢往下拖 120px(遠超過舊門檻 0.6 格),拖到一半量 softDropping 與方塊掉了幾列。
+  //   舊版這裡會量到 softDropping=true、方塊在半秒內掉十幾列;快滑硬降另有 1.6px/ms 的速度門檻,慢拖碰不到。
+  console.log('\n5.1 手指碰方塊不可以變快');
+  await reset(page, { mode: 'gravity' });
+  const boardBox = await page.locator('canvas.board-canvas').boundingBox();
+  check('量得到棋盤位置', boardBox != null);
+  if (boardBox) {
+    const sx = boardBox.x + boardBox.width / 2;
+    const sy = boardBox.y + boardBox.height * 0.25;
+    const before = await page.evaluate(() => ({ y: window.__state?.current?.y ?? null, status: window.__state?.status }));
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    for (let i = 1; i <= 12; i++) {
+      await page.mouse.move(sx, sy + i * 10);
+      await page.waitForTimeout(50);
+    }
+    const mid = await page.evaluate(() => ({
+      soft: window.__state?.softDropping ?? null,
+      y: window.__state?.current?.y ?? null,
+      status: window.__state?.status
+    }));
+    await page.mouse.up();
+    await page.waitForTimeout(100);
+    const after = await page.evaluate(() => ({ y: window.__state?.current?.y ?? null, status: window.__state?.status }));
+    check('對局進行中(不然下面兩項量不到東西)', before.status === 'playing' && mid.status === 'playing', `${before.status}/${mid.status}`);
+    check('手指往下拖時沒有開軟降', mid.soft === false, `softDropping=${mid.soft}`);
+    const fell = (before.y != null && mid.y != null) ? mid.y - before.y : null;
+    check('拖的那 0.6 秒方塊最多只掉 2 列(20× 軟降會掉十幾列)', fell != null && fell >= 0 && fell <= 2, `掉了 ${fell} 列`);
+    check('放手後也沒有被當成硬降(方塊還在同一顆、沒鎖死)', after.status === 'playing' && after.y != null && after.y <= (mid.y ?? 0) + 2, `y ${mid.y} → ${after.y}`);
+  }
+
+  // ── 5.2 桌機「滑鼠拖曳模式」往下拖也不可以變快(0921 第二輪,使用者拍板兩種拖曳一致)
+  //   這個模式要在設定裡打開(存 tetris.mouseDragEnabled=1),走的是 usePointer 的 mouseDrag 分支。
+  console.log('\n5.2 滑鼠拖曳模式往下拖也不可以變快');
+  await page.evaluate(() => { try { localStorage.setItem('tetris.mouseDragEnabled', '1'); } catch { /* 無痕 */ } });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(450);
+  check('滑鼠拖曳模式真的開了', await page.locator('.stage.mouse-drag-enabled').count() === 1);
+  const boardBox2 = await page.locator('canvas.board-canvas').boundingBox();
+  if (boardBox2) {
+    const sx = boardBox2.x + boardBox2.width / 2;
+    const sy = boardBox2.y + boardBox2.height * 0.1;
+    const before = await page.evaluate(() => ({ y: window.__state?.current?.y ?? null, status: window.__state?.status }));
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    for (let i = 1; i <= 12; i++) {
+      await page.mouse.move(sx, sy + i * 10);
+      await page.waitForTimeout(50);
+    }
+    const mid = await page.evaluate(() => ({ soft: window.__state?.softDropping ?? null, y: window.__state?.current?.y ?? null, status: window.__state?.status }));
+    await page.mouse.up();
+    check('滑鼠拖曳模式對局進行中', before.status === 'playing' && mid.status === 'playing', `${before.status}/${mid.status}`);
+    check('滑鼠往下拖時沒有開軟降', mid.soft === false, `softDropping=${mid.soft}`);
+    const fell = (before.y != null && mid.y != null) ? mid.y - before.y : null;
+    check('滑鼠拖的那 0.6 秒方塊最多只掉 2 列', fell != null && fell >= 0 && fell <= 2, `掉了 ${fell} 列`);
+  }
+  await page.evaluate(() => { try { localStorage.removeItem('tetris.mouseDragEnabled'); } catch { /* 無痕 */ } });
+
   // ── 6. 個人紀錄
   console.log('\n6. 個人紀錄');
   const recordRW = await page.evaluate(() => {

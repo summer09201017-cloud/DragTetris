@@ -8,7 +8,7 @@ Vite + React + TypeScript 的俄羅斯方塊 PWA，桌機鍵盤、手機觸控�
 - **計分** — Tetris、T-Spin（含 Mini）、Back-to-Back × 1.5、Combo、Perfect Clear、Soft Drop / Hard Drop 加分
 - **音效** — Web Audio 合成的快樂頌（Beethoven，公有領域）+ 8-bit SFX；BGM/SFX 獨立音量
 - **PWA** — manifest + service worker，可加到主畫面、離線可玩
-- **手機操作** — 在棋盤上拖曳：水平移動、向下軟降、快速下滑硬降、點擊旋轉、長按/雙指 Hold
+- **手機操作** — 在棋盤上拖曳：水平移動、快速下滑硬降、點擊旋轉、長按/雙指 Hold；軟降只用下排的 ▼ 鈕（0921 起手指往下拖**不再**加速，碰方塊不會變快）
 - **桌機操作** — 鍵盤 ←/→/↓/Space/↑/Z/X/C/P/R
 - **三種拖曳放置規則**（各自獨立記最高分）— 經典重力（拖到哪欄就落到底）／塞縫（不下墜，但底下要有支撐）／自由建造（放哪就哪，沙盒不計分）
 - **托盤拖曳可轉向** — 點一下 HOLD / NEXT 的方塊轉 90°；桌機拖曳途中 ↑ / X / Z 也能轉
