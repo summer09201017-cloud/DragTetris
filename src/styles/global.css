@@ -60,6 +60,16 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 }
 .app-header h1 { font-size: 14px; margin: 0; letter-spacing: 1px; flex: 1; text-align: center; }
 
+/* 👍 首頁收合版 widget(like-comment-kit 1013 批次 2)。
+   本站沒有獨立開始畫面，標題列下方從頭到尾都看得到；收合成一顆小藥丸鈕，
+   蓋過 widget 預設的 16px 上下留白，盡量少吃直向寶貴的垂直空間。
+   選擇器用 #id 疊 .hfpc-fb class 兩層，specificity 贏過 widget 注入的 `.hfpc-fb{margin:16px 0}`。 */
+#hfpc-feedback-home.hfpc-fb { margin: 4px auto 6px; text-align: center; max-width: 100%; }
+#hfpc-feedback-home .hf-fold { display: inline-block; }
+/* 結算畫面(GAME OVER 面板)裡搬進來的掛載點，跟上面按鈕留一點距離就好 */
+.feedback-anchor:empty { display: none; }
+.feedback-anchor { margin-top: 10px; text-align: left; }
+
 /* ← 大廳 / ⛶ 全螢幕:標題列兩端。
    0916 手機健檢:40px **不是**觸控下限,44px 才是(iOS HIG / WCAG 2.5.5)⇒ 改成 44。 */
 .header-btn {
@@ -618,6 +628,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .app {
     position: relative;
   }
+
+  /* 手機橫放時棋盤的垂直空間本來就被榨到極限(8×20 的盤最寬也只到 156px，
+     見上面那段「誠實話」)，標題列還改成絕對定位浮在棋盤上——
+     收合版 widget 若照舊吃掉一整列高度會跟它們互相覆蓋。收合版讓位給結算畫面那份就好。 */
+  .hfpc-fb-home { display: none !important; }
 
   /* 標題列浮到左上角的空白區:兩顆鈕留著、維持 44px,只把標題文字讓掉 */
   .app-header {

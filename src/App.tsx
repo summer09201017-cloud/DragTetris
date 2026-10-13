@@ -145,6 +145,7 @@ export default function App() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const gameoverFeedbackAnchorRef = useRef<HTMLDivElement>(null);
   const boardHeightScale = 1.3 * 1.2;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [audioStarted, setAudioStarted] = useState(false);
@@ -207,6 +208,25 @@ export default function App() {
   }, [tick]);
 
   useKeyboard({ dispatch, enabled: state.status !== 'gameover' });
+
+  // 👍 結算畫面的按讚/留言 widget(like-comment-kit 1013 批次 2):
+  // #hfpc-feedback 是 index.html 裡的靜態隱藏 div(classic script 只在開頁找一次,
+  // 認得的是這個固定節點,不是 React 每次重新 mount 出來的 DOM)。
+  // 進 GAME OVER 畫面時把它搬進結算面板、顯示出來;離開時搬回 body 尾、重新隱藏——
+  // appendChild 是搬移不是複製，widget 內部掛好的事件監聽器與狀態都保留。
+  const isGameOverPanel = puzzleStatus === 'off' && state.status === 'gameover';
+  useEffect(() => {
+    let el: HTMLElement | null = null;
+    try { el = document.getElementById('hfpc-feedback'); } catch { /* ignore */ }
+    if (!el) return;
+    if (isGameOverPanel && gameoverFeedbackAnchorRef.current) {
+      gameoverFeedbackAnchorRef.current.appendChild(el);
+      el.style.display = '';
+    } else {
+      el.style.display = 'none';
+      if (el.parentElement !== document.body) document.body.appendChild(el);
+    }
+  }, [isGameOverPanel]);
 
   useEffect(() => {
     try {
@@ -393,6 +413,11 @@ export default function App() {
         )}
       </header>
 
+      {/* 👍 首頁收合版(like-comment-kit 1013 批次 2):本站沒有獨立的開始畫面,
+          開頁就是對局本身,標題列下方從頭到尾都看得到,等同「開始鈕附近」。
+          script 是 index.html 裡的靜態 classic script,靠 data-root="#hfpc-feedback-home" 認得這個 div。 */}
+      <div id="hfpc-feedback-home" className="hfpc-fb-home" />
+
       <div className="layout">
         <div className="hud-stack">
           {challengeLabel(challenge) && (
@@ -552,6 +577,9 @@ export default function App() {
                   <button type="button" onClick={restart}>再玩一局</button>
                   <button type="button" onClick={backToLobby}>返回大廳</button>
                 </div>
+                {/* 👍 結算畫面掛載點(like-comment-kit 1013 批次 2):這裡只是個空殼,
+                    真正的 #hfpc-feedback 由 index.html 的靜態 div 搬進來(見下方 effect)。 */}
+                <div className="feedback-anchor" ref={gameoverFeedbackAnchorRef} />
               </div>
             </div>
           )}

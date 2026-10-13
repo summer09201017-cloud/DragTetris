@@ -79,6 +79,7 @@
 ;(function () {
   // 最新的放最前面。改版只要在這裡插一筆，徽章會自己跟上。
   var APP_VERSIONS = [
+    { v: 'v4.5', d: '2026-10-13', t: '👍 可以按讚、留言了——開始畫面多一顆「💬 按讚・留言」(平常收起來,點開才展開),一局結束的畫面也有一份,兩邊按一次就算數。按讚每台裝置一次;留言有兩種:點短語(👍 好聽、🙏 感動、🕊️ 平安、😊 太好玩了、💪 想再玩一次、❤️ 我喜歡,可以一次點好幾句)送出,馬上就會出現,畫面上會顯示每一句被選了幾次;也可以自己打字(暱稱可不填),審核通過後才會出現(電話、Email 這類個人資料會被擋下來)。' },
     { v: 'v4.4', d: '2026-09-21', t: '碰方塊不會再變快往下掉：原本手指或滑鼠往下拖超過半格就當成按住軟降，橫移時帶一點向下分量就中招；現在軟降只用下排的 ▼ 鈕與鍵盤 ↓，快速下滑（硬降）不受影響' },
     { v: 'v4.3', d: '2026-09-16', t: '改版簡歷在手機上找得到了：原本要在設定面板往下捲大半頁（量到 y=664）才看得見，現在是設定打開後的第一項；全螢幕時右下角的版號也不再被藏起來' },
     { v: 'v4.2', d: '2026-09-16', t: '手機全螢幕真的會變大了：按 ⛶ 之後 HOLD／分數／NEXT 收成上方一條窄橫帶，棋盤從佔螢幕 44.6% 變成 70.3%（面積大 58%）；工具列可用 ▼ 收起、✕ 隨時離開全螢幕' },
@@ -365,5 +366,17 @@ body.mfs-imm.mfs-fold :is(.hud-stack,.touch-pad,.side-controls){display:none!imp
 })();
 </script>
 <!-- mfs-collapsible-zoom v1 : end -->
+
+<!-- 👍 按讚＋兩種留言(like-comment-kit 1013 批次 2,g=dragtetris,free 模式)。
+     widget 的 script 是 classic script,靠 document.currentScript 找自己，只能在 index.html 靜態找一次：
+     ①首頁收合版的掛載點 #hfpc-feedback-home 直接寫在 App.tsx 的標題列下面（本站沒有獨立開始畫面，
+       開頁就是對局本身，header 從頭到尾都看得到——這裡等同「開始鈕附近」）；React 掛載發生在
+       main.tsx 這支 module script 之後、本區塊的 script（defer）之前，所以找得到。
+     ②結算畫面（GAME OVER 面板）是 React 條件渲染、會整塊卸載的 DOM，script 開頁時那塊 DOM 還不存在，
+       所以用下面這個隱藏的靜態 div 當掛載點，由 App.tsx 在進 GAME OVER 時把它搬進結算面板、顯示出來，
+       離開時搬回 body 尾、重新隱藏（既有程式負責顯示/搬動，script 標籤仍是靜態的）。 -->
+<div id="hfpc-feedback" style="display:none"></div>
+<script src="https://hfpc-feedback.summer09201017.workers.dev/widget.js" data-g="dragtetris" data-mode="free" data-like="👍 好玩就按個讚" data-title="俄羅斯方塊" defer></script>
+<script src="https://hfpc-feedback.summer09201017.workers.dev/widget.js" data-g="dragtetris" data-mode="free" data-like="👍 好玩就按個讚" data-title="俄羅斯方塊" data-root="#hfpc-feedback-home" data-collapsed defer></script>
 </body>
 </html>
