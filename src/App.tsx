@@ -215,6 +215,16 @@ export default function App() {
   // 進 GAME OVER 畫面時把它搬進結算面板、顯示出來;離開時搬回 body 尾、重新隱藏——
   // appendChild 是搬移不是複製，widget 內部掛好的事件監聽器與狀態都保留。
   const isGameOverPanel = puzzleStatus === 'off' && state.status === 'gameover';
+  // 首頁收合版:同一招,開頁後把 index.html 的靜態 #hfpc-feedback-home 搬進標題列下方的錨點並顯示。
+  const homeFeedbackAnchorRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    let el: HTMLElement | null = null;
+    try { el = document.getElementById('hfpc-feedback-home'); } catch { /* ignore */ }
+    const anchor = homeFeedbackAnchorRef.current;
+    if (!el || !anchor) return;
+    anchor.appendChild(el);
+    el.style.display = '';
+  }, []);
   useEffect(() => {
     let el: HTMLElement | null = null;
     try { el = document.getElementById('hfpc-feedback'); } catch { /* ignore */ }
@@ -415,8 +425,10 @@ export default function App() {
 
       {/* 👍 首頁收合版(like-comment-kit 1013 批次 2):本站沒有獨立的開始畫面,
           開頁就是對局本身,標題列下方從頭到尾都看得到,等同「開始鈕附近」。
-          script 是 index.html 裡的靜態 classic script,靠 data-root="#hfpc-feedback-home" 認得這個 div。 */}
-      <div id="hfpc-feedback-home" className="hfpc-fb-home" />
+          ★ 真正的 #hfpc-feedback-home 是 index.html 的靜態 div,由下方 effect 搬進這個錨點——
+            不能直接在這裡 render 那個 id:React 提交 DOM 晚於 defer 的 widget script,
+            script 找不到容器就會自己在 body 尾另開一格(1013 線上實測首頁那份掛空)。 */}
+      <div ref={homeFeedbackAnchorRef} />
 
       <div className="layout">
         <div className="hud-stack">

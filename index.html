@@ -369,12 +369,14 @@ body.mfs-imm.mfs-fold :is(.hud-stack,.touch-pad,.side-controls){display:none!imp
 
 <!-- 👍 按讚＋兩種留言(like-comment-kit 1013 批次 2,g=dragtetris,free 模式)。
      widget 的 script 是 classic script,靠 document.currentScript 找自己，只能在 index.html 靜態找一次：
-     ①首頁收合版的掛載點 #hfpc-feedback-home 直接寫在 App.tsx 的標題列下面（本站沒有獨立開始畫面，
-       開頁就是對局本身，header 從頭到尾都看得到——這裡等同「開始鈕附近」）；React 掛載發生在
-       main.tsx 這支 module script 之後、本區塊的 script（defer）之前，所以找得到。
+     ①首頁收合版的掛載點 #hfpc-feedback-home 也是下面這個靜態 div（平常隱藏），由 App.tsx 開頁後搬進
+       標題列下方的錨點並顯示（本站沒有獨立開始畫面，header 從頭到尾都看得到——等同「開始鈕附近」）。
+       ★ 1013 修：原本把這個 id 直接 render 在 App.tsx 裡，但 React 提交 DOM 晚於 defer script，
+         widget 找不到容器就在 body 尾自己另開一格 ⇒ 標題列下那格永遠是空的。
      ②結算畫面（GAME OVER 面板）是 React 條件渲染、會整塊卸載的 DOM，script 開頁時那塊 DOM 還不存在，
        所以用下面這個隱藏的靜態 div 當掛載點，由 App.tsx 在進 GAME OVER 時把它搬進結算面板、顯示出來，
        離開時搬回 body 尾、重新隱藏（既有程式負責顯示/搬動，script 標籤仍是靜態的）。 -->
+<div id="hfpc-feedback-home" class="hfpc-fb-home" style="display:none"></div>
 <div id="hfpc-feedback" style="display:none"></div>
 <script src="https://hfpc-feedback.summer09201017.workers.dev/widget.js" data-g="dragtetris" data-mode="free" data-like="👍 好玩就按個讚" data-title="俄羅斯方塊" defer></script>
 <script src="https://hfpc-feedback.summer09201017.workers.dev/widget.js" data-g="dragtetris" data-mode="free" data-like="👍 好玩就按個讚" data-title="俄羅斯方塊" data-root="#hfpc-feedback-home" data-collapsed defer></script>
