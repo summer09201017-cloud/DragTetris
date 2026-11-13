@@ -7,6 +7,8 @@ import { Hud } from './components/Hud';
 import { HoldBox, NextBox } from './components/Mini';
 import { SettingsPanel } from './components/SettingsPanel';
 import { TouchPad } from './components/TouchPad';
+import { IntroCard } from './components/IntroCard';
+import { appVersion, openVersionSheet } from './appVersion';
 import { audio } from './audio/AudioManager';
 import { BOARD_H } from './game/constants';
 import { pieceColor, SKINS } from './skins';
@@ -18,6 +20,30 @@ import { challengeLabel, seedLabel, todayKey } from './daily';
 import { registerPwa } from './pwa';
 
 const LOBBY_URL = 'https://hfpc-bible-games.summer09201017.workers.dev/';
+
+/**
+ * 「怎麼玩」說明卡看過了沒(1113 v4.6)。
+ * ⚠ Safari 私密模式讀寫 localStorage 會丟例外 ⇒ 讀不到就當沒看過(多看一次說明無妨),
+ *   寫不進去也不能弄壞遊戲。
+ * backup-chain:ok —— 這是裝置層的「看過說明了」旗標,不是使用者資料,刻意不進任何備份。
+ */
+const INTRO_SEEN_KEY = 'tetris.introSeen.v1';
+
+function loadIntroSeen(): boolean {
+  try {
+    return window.localStorage.getItem(INTRO_SEEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function saveIntroSeen(): void {
+  try {
+    window.localStorage.setItem(INTRO_SEEN_KEY, '1');
+  } catch {
+    // 無痕模式寫不進去:下次開頁再看一次說明而已。
+  }
+}
 
 type TraySource = 'hold' | 'next';
 type TrayDrag = {
@@ -161,6 +187,27 @@ export default function App() {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // 📖 「怎麼玩」說明卡:第一次開啟自動出現,之後從設定叫出來。
+  //   卡片開著就暫停對局;只有「是卡片自己按的暫停」才在關卡片時恢復
+  //   (本來就停著的局,看完說明仍然停著,不擅自幫玩家按繼續)。
+  const [introOpen, setIntroOpen] = useState(() => !loadIntroSeen());
+  const pausedByIntroRef = useRef(false);
+  useEffect(() => {
+    if (!introOpen) return;
+    if (useGame.getState().state.status === 'playing') {
+      dispatch({ type: 'pause' });
+      pausedByIntroRef.current = true;
+    }
+  }, [introOpen, dispatch]);
+  const closeIntro = useCallback(() => {
+    saveIntroSeen();
+    setIntroOpen(false);
+    if (pausedByIntroRef.current) {
+      pausedByIntroRef.current = false;
+      if (useGame.getState().state.status === 'paused') dispatch({ type: 'resume' });
+    }
+  }, [dispatch]);
+
   // Register service worker once
   useEffect(() => {
     try { registerPwa(); } catch { /* dev mode */ }
@@ -207,7 +254,8 @@ export default function App() {
     return () => cancelAnimationFrame(raf);
   }, [tick]);
 
-  useKeyboard({ dispatch, enabled: state.status !== 'gameover' });
+  // 說明卡開著時鍵盤整個停用:不然按 P / Esc 會在卡片背後把對局恢復。
+  useKeyboard({ dispatch, enabled: state.status !== 'gameover' && !introOpen });
 
   // 👍 結算畫面的按讚/留言 widget(like-comment-kit 1013 批次 2):
   // #hfpc-feedback 是 index.html 裡的靜態隱藏 div(classic script 只在開頁找一次,
@@ -290,6 +338,14 @@ export default function App() {
     dispatch({ type: 'restart', seed: challengeSeed });
     audio.startBgm();
   }, [dispatch, challengeSeed]);
+  // ⟲ 「重啟」「重新開始」:對局進行中(含暫停)先問一聲,一按就重開會把整局洗掉。
+  //   一局已經結束時(結算畫面的「再玩一局」)不必問。
+  const requestRestart = useCallback(() => {
+    const status = useGame.getState().state.status;
+    const inProgress = status === 'playing' || status === 'paused';
+    if (inProgress && !window.confirm('要重新開始一局嗎?這局分數不會保留。')) return;
+    restart();
+  }, [restart]);
 
   // 進 / 離開挑戰都要換網址再整頁重來 —— 種子是在開頁時解析的,
   // 只改 state 的話網址跟實際玩的題目會對不起來(分享出去的連結就是錯的)。
@@ -406,10 +462,19 @@ export default function App() {
         <button type="button" className="header-btn" onClick={backToLobby} title="返回大廳">
           ← 大廳
         </button>
-        <h1>
-          俄羅斯方塊 TETRIS
-          {skinSubtitle && <span className="app-subtitle">{skinSubtitle}</span>}
-        </h1>
+        {/* 🏷 版本鈕(1113 v4.6):原本右下角的徽章 11px、十秒後變淡、點不到。
+            手機直向再多一整列 48px 會讓棋盤變小 ⇒ 改放在標題列中間、標題底下,
+            版號只從 index.html 的 APP_VERSIONS 讀(appVersion()),這裡不寫死任何數字。 */}
+        <div className="header-center">
+          <h1>
+            俄羅斯方塊
+            {skinSubtitle && <span className="app-subtitle">{skinSubtitle}</span>}
+          </h1>
+          <button type="button" className="ver-btn" onClick={openVersionSheet} title="看這個遊戲改了哪些地方">
+            <span className="ver-part">版本 {appVersion()}</span>
+            <span className="ver-part">· 更新紀錄</span>
+          </button>
+        </div>
         {fullscreenSupported && (
           <button
             type="button"
@@ -481,7 +546,7 @@ export default function App() {
           >
             滑鼠拖曳 {mouseDragEnabled ? '開' : '關'}
           </button>
-          <button type="button" onClick={restart}>重啟</button>
+          <button type="button" onClick={requestRestart}>重啟</button>
         </div>
 
         <div className="panel-left">
@@ -514,7 +579,7 @@ export default function App() {
                 <p>遊戲已暫停</p>
                 <div className="row">
                   <button type="button" onClick={() => dispatch({ type: 'resume' })}>繼續</button>
-                  <button type="button" onClick={restart}>重新開始</button>
+                  <button type="button" onClick={requestRestart}>重新開始</button>
                 </div>
               </div>
             </div>
@@ -555,7 +620,7 @@ export default function App() {
           {puzzleStatus === 'off' && state.status === 'gameover' && (
             <div className="overlay">
               <div className="panel">
-                <h2>GAME OVER</h2>
+                <h2>遊戲結束</h2>
                 {beaten && (beaten.score || beaten.lines || beaten.level || beaten.maxCombo) && (
                   <p className="new-best">🎉 新紀錄!</p>
                 )}
@@ -572,7 +637,7 @@ export default function App() {
                     <div><dt>最多行</dt><dd>{record.lines}{beaten?.lines && ' ✨'}</dd></div>
                     <div><dt>最高等級</dt><dd>{record.level}{beaten?.level && ' ✨'}</dd></div>
                     <div><dt>最長 Combo</dt><dd>{record.maxCombo}{beaten?.maxCombo && ' ✨'}</dd></div>
-                    <div><dt>Perfect Clear</dt><dd>{record.pcCount} 次</dd></div>
+                    <div><dt>全消</dt><dd>{record.pcCount} 次</dd></div>
                     <div><dt>已玩局數</dt><dd>{record.games}</dd></div>
                   </dl>
                 ) : (
@@ -627,7 +692,9 @@ export default function App() {
         onBoardWidthChange={(width) => dispatch({ type: 'setBoardWidth', width, seed: challengeSeed })}
         onModeChange={(mode: GameMode) => dispatch({ type: 'setMode', mode, seed: challengeSeed })}
         onClose={() => setSettingsOpen(false)}
+        onShowIntro={() => { setSettingsOpen(false); setIntroOpen(true); }}
       />
+      {introOpen && <IntroCard onStart={closeIntro} />}
       {trayDrag && <FloatingPiece drag={trayDrag} />}
     </div>
   );

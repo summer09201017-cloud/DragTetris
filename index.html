@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0b1020" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Tetris" />
+    <meta name="apple-mobile-web-app-title" content="俄羅斯方塊" />
     <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
     <title>俄羅斯方塊 Tetris</title>
   </head>
@@ -49,71 +49,69 @@
   })();
 </script>
 
-<!-- 🏷 版號兩件套（game-must-haves 第七件）：徽章 + 點得開的改版簡歷。
-     ★ 版號和簡歷都在 APP_VERSIONS 這一处，徽章文字由程式帶出來。
+<!-- 🏷 版號兩件套（game-must-haves 第七件）：標題列的「版本 vN（日期）· 更新紀錄」鈕 + 點得開的更新紀錄。
+     ★ 版號和更新紀錄都只在 APP_VERSIONS 這一處，標題列那顆鈕（App.tsx）與設定面板都讀 window.__appVersion。
        舊版把版號寫死在徽章的 innerText，改版忘了改它就會默默漂移（畫面說 v1、程式已經是 v2）。
-     ★ 本站沒有手寫 sw.js（vite-plugin-pwa 自動產）⇒ 改版時只要在 APP_VERSIONS 最前面插一筆。 -->
-<!-- ★ 徽章是「標籤」不是「按鈕」：pointer-events:none 不可或缺。
-     0915 實測：改成可點之後它蓋住了手機下方 ⟳ 與 ▼ 兩顆鈕的下緣，
-     拇指點下半部會跳出簡歷而不是操作遊戲。
-     （elementFromPoint 量出來的；目視與截圖都看不出來。）
-     ⇒ 簡歷改從「設定」面板開，那裡有空間、不搶操作。 -->
-<div id="appVerBadge" aria-hidden="true"
-     style="position:fixed;right:6px;bottom:4px;font-size:11px;line-height:1;opacity:.55;z-index:2147483000;pointer-events:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);font-family:system-ui,sans-serif"></div>
+     ★ 本站沒有手寫 sw.js（vite-plugin-pwa 自動產，快取版本跟著檔案內容走）⇒ 改版時只要在 APP_VERSIONS 最前面插一筆。
+     ★ 1113 v4.6：右下角那顆 11px、十秒後變淡、點不到的徽章拿掉了，改成標題列裡一顆 ≥44px 的鈕
+       （src/version.test.ts 守 APP_VERSIONS 的格式、日期順序、版號不重複）。 -->
 <style>
   /* ★ hidden 屬性的 display:none 來自瀏覽器預設樣式表，inline style 會贏過它。
      不寫這一行的話，這層全螢幕遮罩從一開頁就蓋在上面、攒下所有點擊。
      （0915 真瀏覽器驗收抓到；36 項單元測試全綠也看不到這種錯。） */
   #appVerSheet[hidden] { display: none !important; }
+  #appVerList li { margin-bottom: 10px; }
 </style>
 <div id="appVerSheet" hidden
      style="position:fixed;inset:0;z-index:2147483001;background:rgba(4,8,20,.78);display:flex;align-items:center;justify-content:center;padding:16px;font-family:system-ui,'Noto Sans TC',sans-serif">
-  <div style="max-width:420px;width:100%;max-height:70vh;overflow:auto;background:#1a2247;border:1px solid #2a356b;border-radius:12px;padding:14px 16px;color:#e6eaff">
-    <h3 style="margin:0 0 8px;font-size:15px">改版簡歷</h3>
-    <ol id="appVerList" style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.75"></ol>
+  <div role="dialog" aria-modal="true" aria-labelledby="appVerTitle"
+       style="max-width:480px;width:100%;max-height:calc(100dvh - 32px);overflow:auto;background:#1a2247;border:1px solid #2a356b;border-radius:12px;padding:16px 18px;color:#e6eaff">
+    <h3 id="appVerTitle" style="margin:0 0 10px;font-size:22px">更新紀錄</h3>
+    <ol id="appVerList" style="margin:0;padding-left:22px;font-size:18px;line-height:1.7"></ol>
     <button type="button" id="appVerClose"
-            style="margin-top:12px;width:100%;min-height:40px;font:inherit;color:#e6eaff;background:#2a356b;border:1px solid #3a4a8b;border-radius:8px;cursor:pointer">關閉</button>
+            style="margin-top:14px;width:100%;min-height:52px;font:inherit;font-size:18px;color:#e6eaff;background:#2a356b;border:1px solid #3a4a8b;border-radius:10px;cursor:pointer">關閉</button>
   </div>
 </div>
 <script>
 ;(function () {
-  // 最新的放最前面。改版只要在這裡插一筆，徽章會自己跟上。
+  // 最新的放最前面。改版只要在這裡插一筆，標題列的版本鈕與設定面板會自己跟上。
+  // ★ 每一條都寫給會眾看的白話：不寫檔名、程式名、px、百分比量測（src/version.test.ts 會擋）。
   var APP_VERSIONS = [
+    { v: 'v4.6', d: '2026-11-13', t: '字更大、按鈕更好按：第一次打開會先看到一張「怎麼玩」說明卡（之後可以從「設定」再叫出來，看說明時遊戲會先停住）；分數、保留、下一個這些字都改成中文並放大；下排按鈕底下加了「左轉、落底、右轉、加速」小字；玩到一半按「重新開始」會先問一聲，免得不小心把這局分數洗掉；畫面最上面就看得到版本，點一下打開更新紀錄。' },
     { v: 'v4.5', d: '2026-10-13', t: '👍 可以按讚、留言了——開始畫面多一顆「💬 按讚・留言」(平常收起來,點開才展開),一局結束的畫面也有一份,兩邊按一次就算數。按讚每台裝置一次;留言有兩種:點短語(👍 好聽、🙏 感動、🕊️ 平安、😊 太好玩了、💪 想再玩一次、❤️ 我喜歡,可以一次點好幾句)送出,馬上就會出現,畫面上會顯示每一句被選了幾次;也可以自己打字(暱稱可不填),審核通過後才會出現(電話、Email 這類個人資料會被擋下來)。' },
-    { v: 'v4.4', d: '2026-09-21', t: '碰方塊不會再變快往下掉：原本手指或滑鼠往下拖超過半格就當成按住軟降，橫移時帶一點向下分量就中招；現在軟降只用下排的 ▼ 鈕與鍵盤 ↓，快速下滑（硬降）不受影響' },
-    { v: 'v4.3', d: '2026-09-16', t: '改版簡歷在手機上找得到了：原本要在設定面板往下捲大半頁（量到 y=664）才看得見，現在是設定打開後的第一項；全螢幕時右下角的版號也不再被藏起來' },
-    { v: 'v4.2', d: '2026-09-16', t: '手機全螢幕真的會變大了：按 ⛶ 之後 HOLD／分數／NEXT 收成上方一條窄橫帶，棋盤從佔螢幕 44.6% 變成 70.3%（面積大 58%）；工具列可用 ▼ 收起、✕ 隨時離開全螢幕' },
-    { v: 'v4.1', d: '2026-09-16', t: '手機健檢修正:橫向時標題列與 HUD 浮到兩側空白，棋盤高度 178→261px（寬度 +47%）；五顆備援鈕與大廳/全螢幕鈕 40→44px；版號徽章不再壓住按鈕' },
+    { v: 'v4.4', d: '2026-09-21', t: '碰方塊不會再變快往下掉：原本手指或滑鼠往下拖一點點，方塊就會加速往下掉，左右移動時很容易誤觸；現在要加速請按下排的 ▼ 鈕（鍵盤是 ↓），很快往下一滑仍然可以讓方塊直接落到底' },
+    { v: 'v4.3', d: '2026-09-16', t: '更新紀錄在手機上找得到了：原本要在設定裡往下捲大半頁才看得到，現在是打開設定後的第一項；全螢幕時右下角的版本號碼也不會再被藏起來' },
+    { v: 'v4.2', d: '2026-09-16', t: '手機全螢幕真的會變大了：按 ⛶ 之後，保留區、分數和下一個方塊收成上方一條窄窄的橫帶，棋盤大了一半以上；全螢幕的工具列可以按 ▼ 收起，按 ✕ 隨時離開全螢幕' },
+    { v: 'v4.1', d: '2026-09-16', t: '手機橫放時棋盤變大了：標題和分數移到棋盤兩旁的空白處；下排五顆按鈕和「大廳」「全螢幕」鈕都加大、比較好按；右下角的版本號碼不再壓住按鈕' },
     { v: 'v4', d: '2026-09-16', t: '每日殘局（每天三題，出題時就用遊戲本身的規則證明過解得開）、悔一步（一局 3 次）、聖經主題皮膚（石頭與泥磚＋和合本經文）、設定面板加上永遠看得到的關閉鈕' },
-    { v: 'v3', d: '2026-09-15', t: '拖曳可轉向（點一下托盤轉 90°，桌機拖曳中也能用 ↑ / Z / X）、每日挑戰與題號連結（?daily / ?seed=）' },
-    { v: 'v2', d: '2026-09-15', t: '三種拖曳規則（經典重力 / 塞縫 / 自由建造）、最高分與個人紀錄、返回大廳與全螢幕鈕、完賽統計打點、引擎單元測試 36 項' },
-    { v: 'v1', d: '2026-08-31', t: '版號徽章、使用統計匯入、棋盤欄數可選 7 / 8 / 12' }
+    { v: 'v3', d: '2026-09-15', t: '拖曳的方塊可以先轉向（點一下旁邊的方塊就轉 90 度，用電腦拖曳時也可以按 ↑ / Z / X 轉）；每日挑戰（全世界同一天玩同一副牌）與題號連結（老師報一個號碼，全班玩同一盤）' },
+    { v: 'v2', d: '2026-09-15', t: '三種拖曳規則（經典重力／塞縫／自由建造）、最高分與個人紀錄、「返回大廳」與「全螢幕」按鈕；也開始匿名計算玩完了幾局（不收任何個人資料），並加了自動檢查，改版比較不會改壞' },
+    { v: 'v1', d: '2026-08-31', t: '畫面上看得到版本號碼、開始匿名計算有多少人來玩（不收任何個人資料）、棋盤寬度可以選 7、8 或 12 格' }
   ];
-  var badge = document.getElementById('appVerBadge');
   var sheet = document.getElementById('appVerSheet');
   var list  = document.getElementById('appVerList');
   var close = document.getElementById('appVerClose');
-  if (!badge || !sheet || !list || !close) return;
+  if (!sheet || !list || !close) return;
 
   var latest = APP_VERSIONS[0];
-  badge.textContent = '🏷️ 版本 ' + latest.v + '（' + latest.d + '）';
   list.innerHTML = APP_VERSIONS.map(function (r) {
     var esc = function (x) { return String(x).replace(/[&<>]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]; }); };
     return '<li><b>' + esc(r.v) + '</b>（' + esc(r.d) + '）：' + esc(r.t) + '</li>';
   }).join('');
 
-  function open()  { sheet.hidden = false; }
+  // 打開時一定從最上面(最新那一條)開始看;焦點給「關閉」但不要讓它把畫面捲到底
+  function open()  {
+    sheet.hidden = false;
+    try { sheet.firstElementChild.scrollTop = 0; close.focus({ preventScroll: true }); } catch (_) {}
+  }
   function shut()  { sheet.hidden = true; }
-  // 給設定面板（React）叫的入口。
+  // 給標題列的版本鈕與設定面板（React）叫的入口。
   window.__openVersionSheet = open;
+  // 畫面上唯一的版號字串（標題列鈕、設定面板都讀這個，不要在別處再寫一份）。
   window.__appVersion = latest.v + '（' + latest.d + '）';
   close.addEventListener('click', shut);
   sheet.addEventListener('click', function (e) { if (e.target === sheet) shut(); });
   addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) shut(); });
-
-  // 遞減淡出，10 秒後變得很淡（不拿掉，還看得到版號）。
-  badge.style.transition = 'opacity .8s';
-  setTimeout(function () { badge.style.opacity = '.2'; }, 10000);
 })();
 </script>
 <!-- mfs-collapsible-zoom v1 : begin -->

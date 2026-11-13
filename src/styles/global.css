@@ -54,29 +54,54 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 5px 10px;
+  padding: 3px 10px;
   border-bottom: 1px solid var(--line);
   background: linear-gradient(180deg, var(--bg-2), var(--bg));
 }
-.app-header h1 { font-size: 14px; margin: 0; letter-spacing: 1px; flex: 1; text-align: center; }
+/* 標題列中間:標題 + 常駐的「版本 … · 更新紀錄」鈕(1113 v4.6)。
+   手機直向再多一整列 48px 會讓棋盤變小 ⇒ 疊在標題底下,靠省下右下角徽章那 18px 留白、
+   棋盤格線的 gap 與按讚列的上下留白換回來(改前改後量過,見 讀我-HANDOFF ★段)。 */
+.header-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.app-header h1 { font-size: 18px; line-height: 1.1; margin: 0; letter-spacing: 1px; text-align: center; }
+.ver-btn {
+  min-height: 48px;
+  max-width: 100%;
+  padding: 2px 10px;
+  font-size: 16px;
+  line-height: 1.15;
+  color: var(--text);
+  background: rgba(34, 211, 238, .08);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+/* 只在兩段之間換行,不要把日期從中間的「-」折斷 */
+.ver-part { display: inline-block; white-space: nowrap; }
+.ver-part + .ver-part { margin-left: .3em; }
 
 /* 👍 首頁收合版 widget(like-comment-kit 1013 批次 2)。
    本站沒有獨立開始畫面，標題列下方從頭到尾都看得到；收合成一顆小藥丸鈕，
    蓋過 widget 預設的 16px 上下留白，盡量少吃直向寶貴的垂直空間。
    選擇器用 #id 疊 .hfpc-fb class 兩層，specificity 贏過 widget 注入的 `.hfpc-fb{margin:16px 0}`。 */
-#hfpc-feedback-home.hfpc-fb { margin: 4px auto 6px; text-align: center; max-width: 100%; }
+#hfpc-feedback-home.hfpc-fb { margin: 2px auto 2px; text-align: center; max-width: 100%; }
 #hfpc-feedback-home .hf-fold { display: inline-block; }
 /* 結算畫面(GAME OVER 面板)裡搬進來的掛載點，跟上面按鈕留一點距離就好 */
 .feedback-anchor:empty { display: none; }
 .feedback-anchor { margin-top: 10px; text-align: left; }
 
 /* ← 大廳 / ⛶ 全螢幕:標題列兩端。
-   0916 手機健檢:40px **不是**觸控下限,44px 才是(iOS HIG / WCAG 2.5.5)⇒ 改成 44。 */
+   0916 手機健檢:40px **不是**觸控下限,44px 才是(iOS HIG / WCAG 2.5.5)⇒ 改成 44。
+   1113 長輩友善:48px、字 16px。 */
 .header-btn {
   padding: 6px 10px;
-  font-size: 13px;
-  min-height: 44px;
-  min-width: 44px;
+  font-size: 16px;
+  min-height: 48px;
+  min-width: 48px;
   flex: 0 0 auto;
   white-space: nowrap;
 }
@@ -101,7 +126,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: rgba(0, 0, 0, .22);
   border: 1px solid var(--line);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 16px;
+}
+/* 結算畫面在手機上不夠寬放兩欄 16px 的字 ⇒ 窄的時候改一欄 */
+@media (max-width: 420px) {
+  .record-list { grid-template-columns: minmax(0, 1fr); }
 }
 .record-list > div {
   display: flex;
@@ -114,9 +143,9 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 /* 模式選擇:三檔名稱比欄數長,窄螢幕要讓它自己換行而不是溢出 */
 .segmented.mode-options { flex-wrap: wrap; }
-.wide-btn { width: 100%; min-height: 40px; }
+.wide-btn { width: 100%; min-height: 48px; }
 
-/* 托盤方塊:點一下轉向的提示。刻意很小很淡 —— 它是一次性的教學,不是常駐 UI。 */
+/* 托盤方塊:點一下轉向的提示(1113 長輩友善:不再疊 opacity 變淡,字 14px)。 */
 /* 挑戰橫幅:告訴玩家「這一局是哪一題」。free 模式整條不渲染。 */
 /* ★ challenge-bar 與 score-grid 都是格線的第一列 ⇒ 直接並列會疊在一起。
    包一層 .hud-stack 占那一格，兩條在裡面縱向排。 */
@@ -134,7 +163,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   align-items: center;
   justify-content: center;
   gap: 4px 10px;
-  font-size: 11.5px;
+  font-size: 14px;
   padding: 1px 0;
   min-width: 0;
 }
@@ -142,11 +171,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .challenge-best { color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
 .mini-hint {
-  font-size: 9.5px;
+  font-size: 14px;
   line-height: 1.2;
   text-align: center;
   color: var(--text-dim);
-  opacity: .75;
   padding: 2px 0 1px;
   pointer-events: none;
 }
@@ -169,8 +197,9 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr) 52px;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
-  gap: 6px;
-  padding: 6px;
+  /* 1113:6 → 4px。字放大、按鈕加高之後,從格線間距把棋盤的高度換回來 */
+  gap: 4px;
+  padding: 4px;
   min-height: 0;
   overflow: hidden;
 }
@@ -196,11 +225,12 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .side-controls button {
   min-width: 0;
   /* 0916 手機體檢:這一排(暫停/悔一步/設定/滑鼠拖曳/重啟)實測只有 30px 高,
-     而同一份 CSS 的 .header-btn 早就寫了「40px 是觸控目標下限」—— 這裡是漏掉,不是刻意。 */
-  min-height: 44px;
-  padding: 7px 8px;
+     而同一份 CSS 的 .header-btn 早就寫了「40px 是觸控目標下限」—— 這裡是漏掉,不是刻意。
+     1113 長輩友善:44 → 48px,字 16px(窄螢幕最多折成兩行,48px 裝得下)。 */
+  min-height: 48px;
+  padding: 4px 8px;
   white-space: normal;
-  line-height: 1.15;
+  line-height: 1.1;
 }
 
 /* ⚠ 0916:手機體檢建議把這個門檻從 900px 降到 600px(理由是「橫放時棋盤只有 75px 寬,
@@ -228,11 +258,13 @@ button:disabled { opacity: .5; cursor: not-allowed; }
     grid-column: 1;
     grid-row: 2;
   }
+  /* 1113:左欄最寬 170px,三顆鈕擠不下會把「暫停」折成「暫/停」⇒ 讓它延伸到棋盤底下那格(那格本來是空的) */
   .side-controls-left {
-    grid-column: 1 / 2;
+    grid-column: 1 / 3;
     grid-row: 3;
     width: auto;
   }
+  .side-controls button { white-space: nowrap; }
   .stage {
     grid-column: 2;
     grid-row: 2;
@@ -253,15 +285,21 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   /* ★ 手機的托盤欄只有約 52px 寬，「點一下轉向 ⟳」會斷成兩行、讀不了。
      窄螢幕只留圖示，文字說明搬到設定面板的「手機操作」那一段。 */
   .hint-long { display: none; }
-  .mini-hint { font-size: 12px; opacity: .9; }
+  .mini-hint { font-size: 14px; }
 
   /* 四格在手機寬度擠不下 ⇒ 改成二×二，比擠成一排剪字好讀 */
   .score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .side-controls { gap: 5px; }
+  /* 1113:字從 12px 放大到 16px ⇒ 左右兩組不再對半分。
+     左邊三顆(暫停/悔一步/設定)字比較多,給 58%;右邊兩顆(滑鼠拖曳/重啟)給 42%。
+     按鈕寬度跟著字走(flex 1 1 auto),360 寬時每顆都一行放得下,320 寬才折成兩行。 */
+  .side-controls-left { width: calc(58% - 4px); }
+  .side-controls-right { width: calc(42% - 4px); }
   .side-controls button {
-    flex: 1 1 0;
-    padding: 7px 6px;
-    font-size: 12px;
+    flex: 1 1 auto;
+    min-width: 48px;
+    padding: 4px 4px;
+    font-size: 16px;
   }
 }
 
@@ -312,6 +350,12 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .panel-left, .panel-right {
     flex-direction: column;
   }
+  /* 1113:桌機的「下一個」欄是一張很高的佇列圖,畫面不夠高時會溢出自己那一格、
+     蓋住下面的「滑鼠拖曳」「重啟」(verify-browser 在 1280×900 量到;更矮的桌機視窗 0916 起就會)。
+     ⇒ 溢出就裁掉佇列圖的底部,不准蓋到按鈕。 */
+  .panel-left, .panel-right { overflow: hidden; }
+  /* 桌機寬度夠:版本鈕排在標題右邊,不疊兩層,標題列維持原本的高度 */
+  .header-center { flex-direction: row; justify-content: center; gap: 14px; }
 }
 
 .mini {
@@ -323,11 +367,15 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   min-height: 0;
   overflow: hidden;
 }
+/* 1113:HOLD / NEXT → 保留 / 下一個,10px → 14px。
+   手機的托盤欄只有 52px 寬(內容 42px),「下一個」三個字 14px 剛好放得下 ⇒ 不要再加字距。 */
 .mini-title {
-  font-size: 10px;
-  letter-spacing: .8px;
+  font-size: 14px;
+  line-height: 1.2;
+  letter-spacing: 0;
+  white-space: nowrap;
+  text-align: center;
   color: var(--text-dim);
-  text-transform: uppercase;
   margin-bottom: 4px;
 }
 .mini canvas { display: block; width: 100%; height: auto; }
@@ -343,7 +391,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 .score-grid {
   display: grid;
-  /* 四格：SCORE / BEST / LEVEL / LINES。窄螢幕讓它自己換行成兩排二兩。 */
+  /* 四格：分數 / 最高 / 等級 / 行數(1113 前是 SCORE / BEST / LEVEL / LINES)。 */
   grid-template-columns: repeat(4, max-content);
   justify-content: center;
   flex-wrap: wrap;
@@ -354,13 +402,14 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 3px 5px;
-  min-width: 42px;
+  padding: 2px 6px;
+  min-width: 48px;
   width: max-content;
   text-align: center;
 }
-.score-cell .label { color: var(--text-dim); font-size: 8px; letter-spacing: .5px; text-transform: uppercase; }
-.score-cell .value { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* 1113 長輩友善:標籤 8 → 14px、數字 14 → 18px;行高收緊,整格只比原本高 5px 左右 */
+.score-cell .label { color: var(--text-dim); font-size: 14px; line-height: 1.1; }
+.score-cell .value { font-size: 18px; line-height: 1.15; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .touch-pad {
   grid-column: 1 / -1;
@@ -373,12 +422,22 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: var(--bg-2);
 }
 .touch-pad button {
-  /* 0916 手機健檢:量到 40px —— 這五顆(⟲ HOLD ⤓ ⟳ ▼)是手機上唯一的備援操作,
-     偏偏是最該按得準的。padding 10 → 12,實測 44px。 */
-  padding: 12px 0;
+  /* 0916 手機健檢:量到 40px —— 這五顆(⟲ 保留 ⤓ ⟳ ▼)是手機上唯一的備援操作,
+     偏偏是最該按得準的。padding 10 → 12,實測 44px。
+     1113:符號底下加一行小字(左轉/落底/右轉/加速)。高度刻意維持 44px —— 再加高會擠到棋盤;
+     小字放進原本上下 12px 的留白裡。 */
+  padding: 3px 0;
   min-height: 44px;
-  font-size: 14px;
+  font-size: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
 }
+.touch-pad .pad-icon { font-size: 18px; line-height: 1; }
+.touch-pad .pad-text { font-size: 14px; line-height: 1.05; color: var(--text-dim); }
+.touch-pad .pad-word { font-size: 16px; line-height: 1; }
 
 @media (min-width: 900px) and (orientation: landscape) {
   .mini {
@@ -390,27 +449,35 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   }
 }
 
+/* 暫停 / 結算 / 殘局結果的面板。
+   ★ 1113:字放大到 18px、按鈕 48px 之後,只蓋在棋盤那一格(直向 232px 寬、橫向 231px 高)
+     放不下 ⇒ 改成蓋住整個畫面、內容太長可以捲(panel 用 margin:auto 置中,
+     比 align-items:center 安全:內容比畫面高時不會把頂端切掉)。
+     z-index 35:要蓋過橫向時浮在兩側的標題列與分數(30),但低於說明卡(50)與全螢幕工具列。 */
 .overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(7, 9, 26, 0.78);
+  padding: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(7, 9, 26, 0.82);
   backdrop-filter: blur(4px);
-  z-index: 10;
+  z-index: 35;
 }
 .overlay .panel {
+  margin: auto;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 22px 26px;
+  padding: 18px 16px;
   text-align: center;
-  min-width: 240px;
+  width: min(440px, 100%);
 }
-.overlay h2 { margin: 0 0 6px; font-size: 22px; }
-.overlay p  { margin: 4px 0 14px; color: var(--text-dim); font-size: 13px; }
-.overlay .row { display: flex; gap: 8px; justify-content: center; }
+.overlay h2 { margin: 0 0 6px; font-size: 24px; }
+.overlay p  { margin: 4px 0 12px; color: var(--text-dim); font-size: 18px; line-height: 1.5; }
+.overlay .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.overlay .row button { min-height: 48px; font-size: 18px; flex: 1 1 auto; }
 
 .settings {
   /* fixed 而不是 absolute:面板比畫面高的時候,absolute 會被祖先的捲動位置帶著跑 */
@@ -423,16 +490,18 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   overflow-y: auto;
   background: rgba(7, 9, 26, 0.86);
   backdrop-filter: blur(6px);
-  z-index: 20;
+  /* 1113:20 → 40。手機橫放時標題列與分數是浮在兩側的(z-index 30),
+     原本會疊在設定面板上面(版本鈕加進標題列後更明顯地壓住「設定」標題)。 */
+  z-index: 40;
 }
 .settings .card {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 0 22px 22px;
-  min-width: 280px;
-  max-width: 360px;
-  width: 86%;
+  min-width: 0;
+  max-width: 420px;
+  width: 100%;
   /* ★ 0916 手機體檢紅燈:面板總高 903px 對上 844px 的直向畫面、676px 對上 390px 的橫向畫面
      ⇒ 唯一的「關閉」鈕在螢幕外(橫向要再滑將近兩個畫面高),小孩點進設定就出不來。
      修法:卡片自己可捲 + 頂端一條 sticky 的 ✕,不管捲到哪裡都看得到出口。 */
@@ -454,22 +523,26 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   border-bottom: 1px solid var(--line);
 }
 .settings-close {
-  min-width: 44px;
-  min-height: 44px;
-  font-size: 16px;
+  min-width: 48px;
+  min-height: 48px;
+  font-size: 18px;
   line-height: 1;
   flex: 0 0 auto;
 }
-.settings h2 { margin: 0; font-size: 18px; }
-.settings .field { margin-bottom: 14px; }
+.settings h2 { margin: 0; font-size: 20px; }
+.settings .field { margin-bottom: 16px; }
+/* 1113 長輩友善:設定面板的字 ≥16px、按鈕與滑桿 ≥48px */
 .settings .field label {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 16px;
   color: var(--text-dim);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
-.settings .field input[type="range"] { width: 100%; accent-color: var(--accent); }
+.settings .about-field > label { margin-top: 12px; }
+.settings button { min-height: 48px; }
+.settings .field input[type="range"] { width: 100%; min-height: 48px; margin: 0; accent-color: var(--accent); }
 .settings .segmented {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -488,24 +561,26 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .settings .field-note {
   margin: 6px 0 0;
   color: var(--text-dim);
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 16px;
+  line-height: 1.5;
 }
 .settings .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
 
+/* 操作說明:1113 從 11px 放大到 18px(說明類文字) */
 .help {
-  font-size: 11px;
+  font-size: 18px;
   color: var(--text-dim);
-  line-height: 1.5;
+  line-height: 1.7;
 }
 .help kbd {
   background: #232c5e;
   border: 1px solid var(--line);
   border-bottom-width: 2px;
   border-radius: 4px;
-  padding: 1px 5px;
-  font-size: 10px;
+  padding: 1px 6px;
+  font-size: 16px;
   font-family: ui-monospace, monospace;
+  color: var(--text);
 }
 
 .toast {
@@ -550,11 +625,12 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 /* 🎨 聖經皮的副標（經典皮不顯示） */
 .app-subtitle {
   display: block;
-  font-size: 10px;
-  letter-spacing: 2px;
+  font-size: 14px;
+  line-height: 1.05;
+  letter-spacing: 1px;
   font-weight: 400;
   color: var(--text-dim);
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 /* ↩ 悔一步：用完或不能悔時明顯變暗，不要讓人一直按一顆沒有反應的鈕 */
@@ -564,10 +640,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 /* 🧩 殘局狀態列 */
 .puzzle-bar .link-btn {
-  min-height: 32px;
-  padding: 4px 10px;
+  min-height: 48px;
+  padding: 4px 12px;
   margin-left: 6px;
-  font-size: 12px;
+  font-size: 16px;
 }
 
 /* 🧩 / 🎨 設定面板裡的兩排選項 */
@@ -587,23 +663,9 @@ button:disabled { opacity: .5; cursor: not-allowed; }
    0916 手機健檢紅黃燈修正(DEYI 場線上實測 iPhone 844×390)
    ───────────────────────────────────────────────────────────── */
 
-/* ⑥ 🟠 版號徽章壓在 ▼ 鈕上(直向還會壓到 ⟳)。
-      它是 pointer-events:none,不會偷走觸控,但視覺上蓋住按鈕文字。
-      ⇒ 抬到觸控備援列之上。用 !important 是因為位置寫在 index.html 的 inline style 裡
-        (那是全艦隊共用的徽章區塊,不改它、只在本站覆蓋)。 */
-/* ⚠ 我第一版把它抬到 66px —— 結果從壓住 ▼ 變成壓住「滑鼠拖曳」與「重啟」,
-   因為底部由下而上是 .touch-pad 然後 .side-controls,兩層都是按鈕。
-   ⇒ 分兩種方向各給一個真的空位,而不是繼續往上推。 */
-
-/* 直向:高度有餘裕(stage 624px)⇒ 讓備援列往上一點,徽章落在它下面的空白 */
-@media (orientation: portrait) {
-  .touch-pad {
-    margin-bottom: 18px;
-  }
-  #appVerBadge {
-    bottom: 2px !important;
-  }
-}
+/* ⑥ 版號徽章(0916~1013 浮在右下角、11px、點不到)在 1113 v4.6 拿掉了,
+      改成標題列中間一顆常駐、≥44px 的「版本 … · 更新紀錄」鈕。
+      原本直向時為了讓徽章有地方放,備援列底下留了 18px 空白 —— 一起收回來給棋盤。 */
 
 /* ④ 🔴 橫向時棋盤只有 71×178,螢幕約 85% 空白。
 
@@ -634,47 +696,105 @@ button:disabled { opacity: .5; cursor: not-allowed; }
      收合版 widget 若照舊吃掉一整列高度會跟它們互相覆蓋。收合版讓位給結算畫面那份就好。 */
   .hfpc-fb-home { display: none !important; }
 
-  /* 標題列浮到左上角的空白區:兩顆鈕留著、維持 44px,只把標題文字讓掉 */
+  /* 標題列浮到左上角的空白區:兩顆鈕留著,只把標題文字讓掉。
+     1113 v4.6:
+     ① 版本鈕排在兩顆鈕的**下一行**(order + 100% 寬),不往右長 —— 往右長會蓋到棋盤左緣。
+     ② left 從 0 改成 60px(= 格線留白 4 + 托盤欄 52 + 間距 4):
+        原本標題列從最左邊開始,其實一直壓著「保留」那一格的上半部(0916 起就這樣,截圖看得出來)。
+        版本鈕再往下多一行就會整格蓋住 ⇒ 一起挪到托盤欄右邊的空白。 */
   .app-header {
     position: absolute;
     top: var(--safe-top, 0px);
-    left: 0;
+    left: 60px;
     z-index: 30;
-    width: auto;
+    width: 210px;
+    max-width: calc(50vw - 110px);
+    flex-wrap: wrap;
+    justify-content: flex-start;
     gap: 6px;
-    padding: 2px 6px;
+    padding: 2px 0;
     border-bottom: 0;
     background: transparent;
+  }
+  .header-center {
+    order: 3;
+    flex: 1 0 100%;
+    align-items: flex-start;
   }
   .app-header h1,
   .app-subtitle {
     display: none;
   }
 
-  /* HUD 浮到右上角的空白區(它是看的、不是按的,擋不到操作) */
+  /* HUD 浮到右上角的空白區(它是看的、不是按的,擋不到操作)。
+     1113:字放大後改成兩排兩格;right 從 6px 改成 60px,不再壓到「下一個」那一格的標題。 */
   .hud-stack {
     position: absolute;
     top: 2px;
-    right: 6px;
+    right: 60px;
     z-index: 30;
-    width: min(260px, 34vw);
+    width: auto;
+    max-width: calc(50vw - 110px);
   }
+  .hud-stack .score-grid { grid-template-columns: repeat(2, max-content); }
+
+  /* 托盤欄只有 52px 寬:「點一下轉向」的長字在橫向也收掉,只留 ⟳(說明在「怎麼玩」裡) */
+  .hint-long { display: none; }
 
   /* 第一列(原本給 HUD)歸零,省下來的高度全部流進 stage 的 1fr */
   .layout {
     grid-template-rows: 0px minmax(0, 1fr) auto auto;
   }
 
-  /* 橫向:標題列浮到左上、HUD 浮到右上 ⇒ **頂部中間整片是空的**,
-     徽章放那裡零高度成本,也不會壓到任何按鈕。 */
-  #appVerBadge {
-    top: 6px !important;
-    bottom: auto !important;
-    left: 50% !important;
-    right: auto !important;
-    transform: translateX(-50%);
-  }
-
   /* ⚠ .touch-pad 一定要留著 —— 它是手機唯一的備援操作列,
      而且有一條常駐迴歸項在守(verify-browser.mjs 第 9 節)。 */
 }
+
+/* ── 1113 v4.6:「怎麼玩」說明卡(第一次開啟自動出現,設定裡可再叫出來)──────────
+   蓋住全畫面;卡片比畫面高時整層可以捲,「開始玩」黏在底部,不必捲到最下面才按得到。 */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  padding: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(7, 9, 26, 0.9);
+  backdrop-filter: blur(4px);
+}
+.intro-card {
+  margin: auto;
+  width: min(640px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px 0;
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--text);
+  user-select: text;
+  -webkit-user-select: text;
+}
+.intro-card h2 { margin: 0 0 6px; font-size: 26px; letter-spacing: 1px; }
+.intro-card h3 { margin: 12px 0 2px; font-size: 20px; color: var(--accent); }
+.intro-card b { color: var(--accent); }
+.intro-lead { margin: 0; }
+.intro-list { margin: 0; padding-left: 1.2em; }
+.intro-list li { margin: 4px 0; }
+.intro-note { margin: 10px 0 0; color: var(--text-dim); }
+.intro-start {
+  position: sticky;
+  bottom: 0;
+  display: block;
+  width: calc(100% + 36px);
+  margin: 14px -18px 0;
+  min-height: 56px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #07111f;
+  background: var(--accent);
+  border: 0;
+  border-radius: 0 0 13px 13px;
+}
+.intro-start:hover { background: #5fe3f5; }

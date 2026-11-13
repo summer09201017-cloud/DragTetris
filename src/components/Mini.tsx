@@ -70,7 +70,7 @@ export function HoldBox({
 
   return (
     <div className={piece ? 'mini draggable-mini' : 'mini'} style={{ flex: 1 }} {...handlers}>
-      <div className="mini-title">HOLD (C)</div>
+      <div className="mini-title">保留<span className="hint-long"> (C)</span></div>
       <canvas ref={ref} style={{ aspectRatio: '4 / 3' }} />
       {piece && (
         <div className="mini-hint">
@@ -107,7 +107,7 @@ export function NextBox({
 
   return (
     <div className="mini" style={{ flex: 1 }}>
-      <div className="mini-title">NEXT</div>
+      <div className="mini-title">下一個</div>
       <div className={queue[0] ? 'next-head draggable-mini' : 'next-head'} {...handlers}>
         <canvas ref={headRef} style={{ aspectRatio: '4 / 3' }} />
         {queue[0] && (

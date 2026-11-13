@@ -31,7 +31,9 @@ const EXPECTED_VERSION = (() => {
   try {
     const root = join(dirname(fileURLToPath(import.meta.url)), '..');
     const html = readFileSync(join(root, 'index.html'), 'utf8');
-    const m = html.match(/\{\s*v:\s*'(v\d+)'/);
+    // ⚠ 1113 修:舊的 /'(v\d+)'/ 抓不到 'v4.5' 這種帶小數點的版號,會跳過去抓到更舊的 'v4',
+    //   而「v4.5 包含 v4」又剛好成立 ⇒ 這項一直是假綠。
+    const m = html.match(/\{\s*v:\s*'(v\d+(?:\.\d+)*)'/);
     return m ? m[1] : null;
   } catch {
     return null;
@@ -81,9 +83,65 @@ async function closeSettings(page) {
   await page.waitForTimeout(250);
 }
 
+/** 每顆按鈕的中心點真的點得到它自己(沒有被別的東西蓋住)。回傳被蓋住的按鈕文字。 */
+async function coveredButtons(page, selector) {
+  return page.evaluate((sel) => {
+    const bad = [];
+    document.querySelectorAll(sel).forEach((btn) => {
+      const r = btn.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (!(hit === btn || btn.contains(hit))) bad.push(btn.textContent.trim());
+    });
+    return bad;
+  }, selector);
+}
+
 async function main() {
   const browser = await chromium.launch({ timeout: 60000 });
+
+  // ── 0. 第一次開啟的「怎麼玩」說明卡(1113 v4.6)
+  //   用一頁乾淨的(沒有預先寫「看過了」),量完就關;後面所有段落用另一頁、預先標成看過。
+  console.log('\n0. 第一次開啟的說明卡');
+  {
+    const p0 = await browser.newPage({ viewport: { width: 360, height: 740 } });
+    p0.setDefaultTimeout(6000);
+    p0.setDefaultNavigationTimeout(45000);
+    await p0.goto(BASE, { waitUntil: 'domcontentloaded' });
+    await p0.evaluate(() => { try { localStorage.clear(); } catch { /* 無痕 */ } });
+    await p0.reload({ waitUntil: 'domcontentloaded' });
+    await p0.waitForTimeout(900);
+    check('第一次開啟會出現說明卡', await p0.locator('.intro-card').isVisible());
+    const introText = await p0.locator('.intro-card').innerText().catch(() => '');
+    check('說明卡有簡介與怎麼玩', introText.includes('怎麼玩') && introText.includes('落到底') && introText.includes('▼'), introText.slice(0, 60));
+    const y0 = await p0.evaluate(() => ({ s: window.__state?.status, y: window.__state?.current?.y }));
+    await p0.waitForTimeout(1500);
+    const y1 = await p0.evaluate(() => ({ s: window.__state?.status, y: window.__state?.current?.y }));
+    check('說明卡開著時對局是暫停的、方塊沒有在背後往下掉', y0.s === 'paused' && y1.s === 'paused' && y0.y === y1.y, `${JSON.stringify(y0)} → ${JSON.stringify(y1)}`);
+    const startBox = await p0.locator('.intro-start').boundingBox();
+    check('「開始玩」鈕 ≥48px 高', startBox != null && startBox.height >= 48, startBox ? `${Math.round(startBox.height)}px` : 'null');
+    await p0.locator('.intro-start').click();
+    await p0.waitForTimeout(300);
+    check('按「開始玩」之後說明卡關掉', await p0.locator('.intro-card').count() === 0);
+    check('按「開始玩」之後對局開始', await p0.evaluate(() => window.__state?.status) === 'playing');
+    await p0.reload({ waitUntil: 'domcontentloaded' });
+    await p0.waitForTimeout(700);
+    check('看過一次之後重新整理不會再跳出來', await p0.locator('.intro-card').count() === 0);
+    await p0.locator('.side-controls button', { hasText: '設定' }).first().click();
+    await p0.waitForTimeout(250);
+    await p0.locator('.settings .wide-btn', { hasText: '怎麼玩' }).click();
+    await p0.waitForTimeout(300);
+    check('設定裡的「怎麼玩」叫得出說明卡', await p0.locator('.intro-card').isVisible());
+    check('從設定叫出說明卡時對局也暫停', await p0.evaluate(() => window.__state?.status) === 'paused');
+    await p0.locator('.intro-start').click();
+    await p0.waitForTimeout(250);
+    check('關掉後對局恢復', await p0.evaluate(() => window.__state?.status) === 'playing');
+    await p0.close();
+  }
+
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  // 後面的段落都在測對局本身 ⇒ 每次載入前先標成「說明卡看過了」(reset() 會清 localStorage)
+  await page.addInitScript(() => { try { localStorage.setItem('tetris.introSeen.v1', '1'); } catch { /* 無痕 */ } });
   // 預設 30 秒太長:這支每個「找不到就是紅燈」的判斷都不該等那麼久,疊起來像死當。
   page.setDefaultTimeout(6000);
   // ★ 導覽要分開給：6 秒對本機 preview 綽綽有餘，但打線上第一發冷請求常常不夠
@@ -116,27 +174,27 @@ async function main() {
   });
   check('← 大廳鈕有 title', lobbyTitle === '返回大廳', String(lobbyTitle));
   check('⛶ 全螢幕鈕在', await page.locator('.header-btn', { hasText: '⛶' }).count() === 1);
-  check('版號徽章在', await page.locator('#appVerBadge').count() === 1);
-  const badgeText = await page.locator('#appVerBadge').innerText();
-  check('版號徽章跟得上改版', EXPECTED_VERSION != null && badgeText.includes(EXPECTED_VERSION), `${badgeText} vs ${EXPECTED_VERSION}`);
+  // 1113 v4.6:右下角徽章拿掉,改成標題列裡常駐的「版本 … · 更新紀錄」鈕
+  check('舊的右下角徽章已經拿掉(畫面上只出現一個版號)', await page.locator('#appVerBadge').count() === 0);
+  check('標題列有版本鈕', await page.locator('.ver-btn').count() === 1);
+  const verBtnText = await page.locator('.ver-btn').innerText();
+  check('版本鈕跟得上改版、寫著「更新紀錄」',
+    EXPECTED_VERSION != null && verBtnText.includes(`版本 ${EXPECTED_VERSION}`) && verBtnText.includes('更新紀錄'),
+    `${verBtnText} vs ${EXPECTED_VERSION}`);
 
-  // ── 3. 版號兩件套:徽章只是標示,不可搶觸控
+  // ── 3. 版號兩件套:版本鈕點得到、打得開更新紀錄,而且不搶別的按鈕
   console.log('\n3. 版號兩件套');
-  check('簡歷一開頁是收起來的(hidden 要贏過 inline display)',
+  check('更新紀錄一開頁是收起來的(hidden 要贏過 inline display)',
     !(await page.locator('#appVerSheet').isVisible()));
-  const badgeSteals = await page.evaluate(() => {
-    const bad = [];
-    document.querySelectorAll('.touch-pad button, .side-controls button').forEach((btn) => {
-      const r = btn.getBoundingClientRect();
-      const pts = [[r.left + r.width / 2, r.top + r.height / 2], [r.right - 3, r.bottom - 3]];
-      for (const [x, y] of pts) {
-        const el = document.elementFromPoint(x, y);
-        if (el && el.id === 'appVerBadge') bad.push(btn.textContent.trim());
-      }
-    });
-    return [...new Set(bad)];
-  });
-  check('版號徽章沒有搶走任何按鈕的觸控', badgeSteals.length === 0, badgeSteals.join('/'));
+  const covered = await coveredButtons(page, '.touch-pad button, .side-controls button, .header-btn, .ver-btn');
+  check('每顆操作鈕的中心都點得到它自己(沒有被版本鈕或別的東西蓋住)', covered.length === 0, covered.join('/'));
+  await page.locator('.ver-btn').click();
+  await page.waitForTimeout(300);
+  check('點標題列的版本鈕打得開更新紀錄', await page.locator('#appVerSheet').isVisible());
+  const firstEntry = await page.locator('#appVerList li').first().innerText();
+  check('更新紀錄第一條就是現在這一版', EXPECTED_VERSION != null && firstEntry.startsWith(EXPECTED_VERSION), firstEntry.slice(0, 30));
+  await page.locator('#appVerClose').click();
+  await page.waitForTimeout(250);
 
   // ── 4. 設定面板:三種模式 + 三種欄數 + 版號簡歷
   console.log('\n4. 設定面板');
@@ -152,14 +210,16 @@ async function main() {
   check('設定面板看得到版號', EXPECTED_VERSION != null && verText.includes(EXPECTED_VERSION), `${verText} vs ${EXPECTED_VERSION}`);
   if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/settings.png` });
 
-  await page.locator('.wide-btn', { hasText: '改版簡歷' }).click();
+  await page.locator('.wide-btn', { hasText: '更新紀錄' }).click();
   await page.waitForTimeout(300);
-  check('從設定開得了改版簡歷', await page.locator('#appVerSheet').isVisible());
+  check('從設定也開得了更新紀錄', await page.locator('#appVerSheet').isVisible());
   const entries = await page.locator('#appVerList li').count();
-  check('簡歷至少兩筆', entries >= 2, `實得 ${entries}`);
+  check('更新紀錄至少兩筆', entries >= 2, `實得 ${entries}`);
   await page.locator('#appVerClose').click();
   await page.waitForTimeout(250);
-  check('簡歷關得掉', !(await page.locator('#appVerSheet').isVisible()));
+  check('更新紀錄關得掉', !(await page.locator('#appVerSheet').isVisible()));
+  const helpText = await page.locator('.settings .help').innerText();
+  check('操作說明跟程式一致:沒有「下拖曳 → 軟降」', !helpText.includes('軟降') && helpText.includes('▼'), helpText.slice(0, 40));
   await closeSettings(page);
   check('點背景收得起設定面板', await page.locator('.settings .card').count() === 0);
 
@@ -173,6 +233,26 @@ async function main() {
   }
   check('硬降五次後畫面沒炸', (await page.locator('.score-grid').innerText()).length > 0);
   check('主控台沒有錯誤', consoleErrors.length === 0, consoleErrors.slice(0, 2).join(' | '));
+
+  // ── 5.0 重啟要先問(1113 v4.6):對局進行中按「重啟」跳確認,按取消不可以重開
+  console.log('\n5.0 重啟要先問');
+  {
+    const before = await page.evaluate(() => JSON.stringify(window.__state?.board ?? null));
+    let msg = '';
+    page.once('dialog', (d) => { msg = d.message(); void d.dismiss(); });
+    await page.locator('.side-controls button', { hasText: '重啟' }).click();
+    await page.waitForTimeout(250);
+    check('對局中按「重啟」會先跳確認、講清楚分數不會保留', msg.includes('分數不會保留'), msg);
+    const after = await page.evaluate(() => JSON.stringify(window.__state?.board ?? null));
+    check('按「取消」就不重開(盤面還在)', before === after);
+    page.once('dialog', (d) => { void d.accept(); });
+    await page.locator('.side-controls button', { hasText: '重啟' }).click();
+    await page.waitForTimeout(250);
+    const cleared = await page.evaluate(() => (window.__state?.board ?? []).flat().every((c) => c === 0));
+    check('按「確定」才真的重開(盤面清空)', cleared);
+    const padLabels = await page.locator('.touch-pad button').evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label') || ''));
+    check('下排五顆鈕都有 aria-label', padLabels.length === 5 && padLabels.every((l) => l.length > 0), padLabels.join('/'));
+  }
 
   // ── 5.1 手指碰方塊不可以變快(0921 使用者實機回報)
   //   走的是 usePointer 的手勢路徑(滑鼠拖曳模式預設關,所以 page.mouse 也會走這條)。
@@ -246,14 +326,14 @@ async function main() {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(600);
   const bestCell = (await page.locator('.score-cell').nth(1).innerText()).replace(/\n/g, ' ');
-  check('HUD 第二格是 BEST', bestCell.includes('BEST'), bestCell);
+  check('HUD 第二格是「最高」', bestCell.includes('最高'), bestCell);
   check('BEST 真的讀到了存進去的 4,321', bestCell.includes('4,321'), bestCell);
 
   // ── 7. 自由建造:沙盒不假裝有紀錄
   console.log('\n7. 自由建造模式');
   await reset(page, { mode: 'creative' });
   const creativeCell = (await page.locator('.score-cell').nth(1).innerText()).replace(/\n/g, ' ');
-  check('自由建造時第二格印模式名而不是 BEST 0',
+  check('自由建造時第二格印模式名而不是「最高 0」',
     creativeCell.includes('自由建造'), creativeCell);
 
   // ── 7.5 F 拖曳可轉向
@@ -320,28 +400,32 @@ async function main() {
 
   // ── 8. 手機版面
   console.log('\n8. 手機版面');
-  for (const w of [390, 320]) {
-    await page.setViewportSize({ width: w, height: 740 });
+  for (const [w, h] of [[390, 740], [360, 740], [320, 740], [740, 360]]) {
+    const tag = `${w}×${h}`;
+    await page.setViewportSize({ width: w, height: h });
     await reset(page, { mode: 'gravity' });
     const overflow = await page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    check(`${w}px 不橫向溢出`, overflow <= 0, `溢出 ${overflow}px`);
+    check(`${tag} 不橫向溢出`, overflow <= 0, `溢出 ${overflow}px`);
     const box = await page.locator('canvas.board-canvas').boundingBox();
-    check(`${w}px 棋盤看得到`, box && box.width > 60 && box.height > 100,
+    check(`${tag} 棋盤看得到`, box && box.width > 60 && box.height > 100,
       box ? `${Math.round(box.width)}x${Math.round(box.height)}` : 'null');
-    const steals = await page.evaluate(() => {
-      const bad = [];
-      document.querySelectorAll('.touch-pad button').forEach((btn) => {
-        const r = btn.getBoundingClientRect();
-        for (const [x, y] of [[r.left + r.width / 2, r.top + r.height / 2], [r.right - 3, r.bottom - 3]]) {
-          const el = document.elementFromPoint(x, y);
-          if (el && el.id === 'appVerBadge') bad.push(btn.textContent.trim());
-        }
-      });
-      return [...new Set(bad)];
+    const covered8 = await coveredButtons(page, '.touch-pad button, .side-controls button, .header-btn, .ver-btn');
+    check(`${tag} 每顆操作鈕都沒被蓋住`, covered8.length === 0, covered8.join('/'));
+    const ver = await page.evaluate(() => {
+      const b = document.querySelector('.ver-btn');
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      return { h: r.height, fs: parseFloat(getComputedStyle(b).fontSize), inView: r.top >= 0 && r.bottom <= innerHeight };
     });
-    check(`${w}px 徽章沒壓住操作鈕`, steals.length === 0, steals.join('/'));
-    if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/mobile-${w}.png` });
+    check(`${tag} 版本鈕看得到、≥44px 高、字 ≥16px`, ver != null && ver.inView && ver.h >= 44 && ver.fs >= 16, JSON.stringify(ver));
+    if (box && ver) {
+      const verBox = await page.locator('.ver-btn').boundingBox();
+      const overlapsBoard = verBox && !(verBox.x + verBox.width <= box.x || box.x + box.width <= verBox.x
+        || verBox.y + verBox.height <= box.y || box.y + box.height <= verBox.y);
+      check(`${tag} 版本鈕沒有蓋到棋盤`, !overlapsBoard);
+    }
+    if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/mobile-${w}x${h}.png` });
   }
 
   // ── 9. 0916 新功能:悔一步 / 每日殘局 / 聖經皮膚
@@ -429,7 +513,7 @@ async function main() {
   check('橫向時關閉鈕就在畫面裡(不必捲兩個畫面)',
     closeBox != null && closeBox.y >= 0 && closeBox.y + closeBox.height <= 390,
     closeBox ? `y=${Math.round(closeBox.y)} h=${Math.round(closeBox.height)}` : 'null');
-  check('關閉鈕夠大', closeBox != null && closeBox.width >= 44 && closeBox.height >= 44,
+  check('關閉鈕夠大', closeBox != null && closeBox.width >= 48 && closeBox.height >= 48,
     closeBox ? `${Math.round(closeBox.width)}x${Math.round(closeBox.height)}` : 'null');
   const ownsClose = await page.evaluate(() => {
     const el = document.querySelector('.settings-close');
@@ -446,11 +530,11 @@ async function main() {
     const bad = [];
     document.querySelectorAll('.side-controls button').forEach((b) => {
       const r = b.getBoundingClientRect();
-      if (r.height < 44) bad.push(`${b.textContent.trim()}=${Math.round(r.height)}px`);
+      if (r.height < 48) bad.push(`${b.textContent.trim()}=${Math.round(r.height)}px`);
     });
     return bad;
   });
-  check('側邊控制鈕都 ≥44px(0916 體檢是 30px)', smallButtons.length === 0, smallButtons.join('/'));
+  check('側邊控制鈕都 ≥48px(0916 體檢是 30px,1113 長輩友善再拉到 48)', smallButtons.length === 0, smallButtons.join('/'));
 
   // ⚠ 橫向的棋盤本來就窄:8×20 的盤寬高比 0.4,受限的是**高度**不是欄寬
   //   (844×390 上就算把整個畫面高度都給它也只能到 156px 寬)。

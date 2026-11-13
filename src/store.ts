@@ -145,10 +145,11 @@ interface Store {
 
 /**
  * 消行文案。聖經皮換成經文(skins.ts 那幾句都用 cuv MCP 核對過),
- * 經典皮維持原本的英文術語。
+ * 經典皮維持原本的術語(T-SPIN / TETRIS / COMBO 是這類遊戲的通用叫法);
+ * 1113 v4.6 只把「全消」改成中文,與結算畫面、HUD 的中文一致。
  */
 function clearTextFor(e: Extract<GameEvent, { type: 'clear' }>): string | null {
-  if (e.perfectClear) return 'PERFECT CLEAR!';
+  if (e.perfectClear) return '全消!';
   if (e.tspin === 'full' && e.lines > 0) {
     return e.lines === 3 ? 'T-SPIN TRIPLE' : e.lines === 2 ? 'T-SPIN DOUBLE' : 'T-SPIN SINGLE';
   }
@@ -195,7 +196,7 @@ function handleEvents(events: GameEvent[], setToast: (m: string | null) => void,
       case 'harddrop': audio.playSfx('harddrop'); break;
       case 'lock':     audio.playSfx('lock'); break;
       case 'hold':     audio.playSfx('hold'); break;
-      case 'levelup':  audio.playSfx('levelup'); setToast(`LEVEL ${e.level}`); break;
+      case 'levelup':  audio.playSfx('levelup'); setToast(`升到等級 ${e.level}`); break;
       case 'gameover': audio.playSfx('gameover'); audio.stopBgm(); break;
       case 'clear': {
         if (e.perfectClear) audio.playSfx('pc');

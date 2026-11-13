@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.svg'],
       manifest: {
-        name: '俄羅斯方塊 Tetris',
-        short_name: 'Tetris',
+        name: '俄羅斯方塊',
+        short_name: '俄羅斯方塊',
         description: '可離線遊玩的俄羅斯方塊（手機/桌機通用）',
         theme_color: '#0b1020',
         background_color: '#0b1020',
