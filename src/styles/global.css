@@ -54,13 +54,14 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 3px 10px;
+  padding: 5px 10px;
   border-bottom: 1px solid var(--line);
   background: linear-gradient(180deg, var(--bg-2), var(--bg));
 }
-/* 標題列中間:標題 + 常駐的「版本 … · 更新紀錄」鈕(1113 v4.6)。
-   手機直向再多一整列 48px 會讓棋盤變小 ⇒ 疊在標題底下,靠省下右下角徽章那 18px 留白、
-   棋盤格線的 gap 與按讚列的上下留白換回來(改前改後量過,見 讀我-HANDOFF ★段)。 */
+/* 標題列中間:標題 + 常駐的「版本 … · 更新紀錄」鈕(1113 v4.6 加的入口)。
+   ★ 1114 v4.7(使用者指示「按鈕不用特別放大」):版本鈕退回「一般一行小字」,
+     疊在標題底下仍然塞得進兩旁 44px 的鈕高 ⇒ 標題列高度回到 1113 之前的 55px。
+     不要再把它加高成 48px、也不要把標題列改成兩層。 */
 .header-center {
   flex: 1;
   min-width: 0;
@@ -70,15 +71,14 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 }
 .app-header h1 { font-size: 18px; line-height: 1.1; margin: 0; letter-spacing: 1px; text-align: center; }
 .ver-btn {
-  min-height: 48px;
   max-width: 100%;
-  padding: 2px 10px;
-  font-size: 16px;
-  line-height: 1.15;
+  padding: 1px 6px;
+  font-size: 12px;
+  line-height: 1.2;
   color: var(--text);
   background: rgba(34, 211, 238, .08);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 6px;
 }
 /* 只在兩段之間換行,不要把日期從中間的「-」折斷 */
 .ver-part { display: inline-block; white-space: nowrap; }
@@ -88,7 +88,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
    本站沒有獨立開始畫面，標題列下方從頭到尾都看得到；收合成一顆小藥丸鈕，
    蓋過 widget 預設的 16px 上下留白，盡量少吃直向寶貴的垂直空間。
    選擇器用 #id 疊 .hfpc-fb class 兩層，specificity 贏過 widget 注入的 `.hfpc-fb{margin:16px 0}`。 */
-#hfpc-feedback-home.hfpc-fb { margin: 2px auto 2px; text-align: center; max-width: 100%; }
+#hfpc-feedback-home.hfpc-fb { margin: 4px auto 6px; text-align: center; max-width: 100%; }
 #hfpc-feedback-home .hf-fold { display: inline-block; }
 /* 結算畫面(GAME OVER 面板)裡搬進來的掛載點，跟上面按鈕留一點距離就好 */
 .feedback-anchor:empty { display: none; }
@@ -96,12 +96,12 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 /* ← 大廳 / ⛶ 全螢幕:標題列兩端。
    0916 手機健檢:40px **不是**觸控下限,44px 才是(iOS HIG / WCAG 2.5.5)⇒ 改成 44。
-   1113 長輩友善:48px、字 16px。 */
+   (1113 曾拉到 48px、字 16px;1114 v4.7 退回,使用者指示不要主動放大按鈕) */
 .header-btn {
   padding: 6px 10px;
-  font-size: 16px;
-  min-height: 48px;
-  min-width: 48px;
+  font-size: 13px;
+  min-height: 44px;
+  min-width: 44px;
   flex: 0 0 auto;
   white-space: nowrap;
 }
@@ -126,11 +126,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: rgba(0, 0, 0, .22);
   border: 1px solid var(--line);
   border-radius: 8px;
-  font-size: 16px;
-}
-/* 結算畫面在手機上不夠寬放兩欄 16px 的字 ⇒ 窄的時候改一欄 */
-@media (max-width: 420px) {
-  .record-list { grid-template-columns: minmax(0, 1fr); }
+  font-size: 12px;
 }
 .record-list > div {
   display: flex;
@@ -143,7 +139,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 /* 模式選擇:三檔名稱比欄數長,窄螢幕要讓它自己換行而不是溢出 */
 .segmented.mode-options { flex-wrap: wrap; }
-.wide-btn { width: 100%; min-height: 48px; }
+.wide-btn { width: 100%; min-height: 40px; }
 
 /* 托盤方塊:點一下轉向的提示(1113 長輩友善:不再疊 opacity 變淡,字 14px)。 */
 /* 挑戰橫幅:告訴玩家「這一局是哪一題」。free 模式整條不渲染。 */
@@ -163,7 +159,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   align-items: center;
   justify-content: center;
   gap: 4px 10px;
-  font-size: 14px;
+  font-size: 11.5px;
   padding: 1px 0;
   min-width: 0;
 }
@@ -197,9 +193,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr) 52px;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
-  /* 1113:6 → 4px。字放大、按鈕加高之後,從格線間距把棋盤的高度換回來 */
-  gap: 4px;
-  padding: 4px;
+  gap: 6px;
+  padding: 6px;
   min-height: 0;
   overflow: hidden;
 }
@@ -226,11 +221,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   min-width: 0;
   /* 0916 手機體檢:這一排(暫停/悔一步/設定/滑鼠拖曳/重啟)實測只有 30px 高,
      而同一份 CSS 的 .header-btn 早就寫了「40px 是觸控目標下限」—— 這裡是漏掉,不是刻意。
-     1113 長輩友善:44 → 48px,字 16px(窄螢幕最多折成兩行,48px 裝得下)。 */
-  min-height: 48px;
-  padding: 4px 8px;
+     (1113 曾拉到 48px、字 16px、左右改 58/42 分;1114 v4.7 全部退回 44px / 12px / 對半分) */
+  min-height: 44px;
+  padding: 7px 8px;
   white-space: normal;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
 /* ⚠ 0916:手機體檢建議把這個門檻從 900px 降到 600px(理由是「橫放時棋盤只有 75px 寬,
@@ -258,13 +253,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
     grid-column: 1;
     grid-row: 2;
   }
-  /* 1113:左欄最寬 170px,三顆鈕擠不下會把「暫停」折成「暫/停」⇒ 讓它延伸到棋盤底下那格(那格本來是空的) */
   .side-controls-left {
-    grid-column: 1 / 3;
+    grid-column: 1 / 2;
     grid-row: 3;
     width: auto;
   }
-  .side-controls button { white-space: nowrap; }
   .stage {
     grid-column: 2;
     grid-row: 2;
@@ -290,16 +283,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   /* 四格在手機寬度擠不下 ⇒ 改成二×二，比擠成一排剪字好讀 */
   .score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .side-controls { gap: 5px; }
-  /* 1113:字從 12px 放大到 16px ⇒ 左右兩組不再對半分。
-     左邊三顆(暫停/悔一步/設定)字比較多,給 58%;右邊兩顆(滑鼠拖曳/重啟)給 42%。
-     按鈕寬度跟著字走(flex 1 1 auto),360 寬時每顆都一行放得下,320 寬才折成兩行。 */
-  .side-controls-left { width: calc(58% - 4px); }
-  .side-controls-right { width: calc(42% - 4px); }
   .side-controls button {
-    flex: 1 1 auto;
-    min-width: 48px;
-    padding: 4px 4px;
-    font-size: 16px;
+    flex: 1 1 0;
+    padding: 7px 6px;
+    font-size: 12px;
   }
 }
 
@@ -402,14 +389,15 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 2px 6px;
-  min-width: 48px;
+  padding: 3px 5px;
+  min-width: 42px;
   width: max-content;
   text-align: center;
 }
-/* 1113 長輩友善:標籤 8 → 14px、數字 14 → 18px;行高收緊,整格只比原本高 5px 左右 */
-.score-cell .label { color: var(--text-dim); font-size: 14px; line-height: 1.1; }
-.score-cell .value { font-size: 18px; line-height: 1.15; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* 1113 曾把標籤 8 → 14px、數字 14 → 18px、格子加寬;1114 v4.7 退回原本大小(遊戲畫面不擠優先)。
+   標籤的中文字(分數/最高/等級/行數)留著。 */
+.score-cell .label { color: var(--text-dim); font-size: 8px; letter-spacing: .5px; text-transform: uppercase; }
+.score-cell .value { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .touch-pad {
   grid-column: 1 / -1;
@@ -449,35 +437,36 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   }
 }
 
-/* 暫停 / 結算 / 殘局結果的面板。
-   ★ 1113:字放大到 18px、按鈕 48px 之後,只蓋在棋盤那一格(直向 232px 寬、橫向 231px 高)
-     放不下 ⇒ 改成蓋住整個畫面、內容太長可以捲(panel 用 margin:auto 置中,
-     比 align-items:center 安全:內容比畫面高時不會把頂端切掉)。
-     z-index 35:要蓋過橫向時浮在兩側的標題列與分數(30),但低於說明卡(50)與全螢幕工具列。 */
+/* 暫停 / 結算 / 殘局結果的面板:只蓋在棋盤那一格(1113 曾改成蓋全畫面,1114 v4.7 退回)。
+   ★ 留著 1113 的一個修正:這一層可以捲、面板用 margin:auto 置中。
+     改前結算面板(有按讚留言)比棋盤高很多,align-items:center 會把頂端切掉,
+     橫放時「再玩一局」「返回大廳」整排在畫面外按不到(1114 改前版實測 y=-35)。
+     margin:auto 在內容比框高時不會切頂端,捲一下就按得到。 */
 .overlay {
-  position: fixed;
+  position: absolute;
   inset: 0;
   display: flex;
-  padding: 12px;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
-  background: rgba(7, 9, 26, 0.82);
+  background: rgba(7, 9, 26, 0.78);
   backdrop-filter: blur(4px);
-  z-index: 35;
+  z-index: 10;
 }
 .overlay .panel {
   margin: auto;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 18px 16px;
+  padding: 22px 26px;
   text-align: center;
-  width: min(440px, 100%);
+  min-width: min(240px, 100%);
 }
+/* 1113 曾把面板說明字放大到 18px;1114 v4.7 退回 13px —— 面板退回只有棋盤那麼寬(直向 232px)後,
+   結算畫面 18px 的說明每句折成三行、擠在一起 */
 .overlay h2 { margin: 0 0 6px; font-size: 24px; }
-.overlay p  { margin: 4px 0 12px; color: var(--text-dim); font-size: 18px; line-height: 1.5; }
-.overlay .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.overlay .row button { min-height: 48px; font-size: 18px; flex: 1 1 auto; }
+.overlay p  { margin: 4px 0 14px; color: var(--text-dim); font-size: 13px; }
+.overlay .row { display: flex; gap: 8px; justify-content: center; }
 
 .settings {
   /* fixed 而不是 absolute:面板比畫面高的時候,absolute 會被祖先的捲動位置帶著跑 */
@@ -491,7 +480,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: rgba(7, 9, 26, 0.86);
   backdrop-filter: blur(6px);
   /* 1113:20 → 40。手機橫放時標題列與分數是浮在兩側的(z-index 30),
-     原本會疊在設定面板上面(版本鈕加進標題列後更明顯地壓住「設定」標題)。 */
+     原本會疊在設定面板上面(740×360 時分數那條壓住設定卡右上角的 ✕)⇒ 1114 v4.7 退回時留著。 */
   z-index: 40;
 }
 .settings .card {
@@ -499,9 +488,9 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 0 22px 22px;
-  min-width: 0;
-  max-width: 420px;
-  width: 100%;
+  min-width: 280px;
+  max-width: 360px;
+  width: 86%;
   /* ★ 0916 手機體檢紅燈:面板總高 903px 對上 844px 的直向畫面、676px 對上 390px 的橫向畫面
      ⇒ 唯一的「關閉」鈕在螢幕外(橫向要再滑將近兩個畫面高),小孩點進設定就出不來。
      修法:卡片自己可捲 + 頂端一條 sticky 的 ✕,不管捲到哪裡都看得到出口。 */
@@ -523,26 +512,25 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   border-bottom: 1px solid var(--line);
 }
 .settings-close {
-  min-width: 48px;
-  min-height: 48px;
-  font-size: 18px;
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 16px;
   line-height: 1;
   flex: 0 0 auto;
 }
 .settings h2 { margin: 0; font-size: 20px; }
-.settings .field { margin-bottom: 16px; }
-/* 1113 長輩友善:設定面板的字 ≥16px、按鈕與滑桿 ≥48px */
+.settings .field { margin-bottom: 14px; }
+/* 1113 把設定面板的字放大到 16px(留著);按鈕與滑桿 48px 在 1114 v4.7 退回原本大小 */
 .settings .field label {
   display: flex;
   justify-content: space-between;
   gap: 8px;
   font-size: 16px;
   color: var(--text-dim);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .settings .about-field > label { margin-top: 12px; }
-.settings button { min-height: 48px; }
-.settings .field input[type="range"] { width: 100%; min-height: 48px; margin: 0; accent-color: var(--accent); }
+.settings .field input[type="range"] { width: 100%; accent-color: var(--accent); }
 .settings .segmented {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -577,7 +565,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   border: 1px solid var(--line);
   border-bottom-width: 2px;
   border-radius: 4px;
-  padding: 1px 6px;
+  padding: 1px 5px;
   font-size: 16px;
   font-family: ui-monospace, monospace;
   color: var(--text);
@@ -625,9 +613,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 /* 🎨 聖經皮的副標（經典皮不顯示） */
 .app-subtitle {
   display: block;
-  font-size: 14px;
+  /* 1113 曾放大到 14px;1114 v4.7 退回 10px —— 聖經皮的標題列要同時放標題、副標、版本鈕,
+     14px 會讓標題列比改前高 9px、棋盤跟著變小 */
+  font-size: 10px;
   line-height: 1.05;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
   font-weight: 400;
   color: var(--text-dim);
   margin-top: 0;
@@ -640,10 +630,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 /* 🧩 殘局狀態列 */
 .puzzle-bar .link-btn {
-  min-height: 48px;
-  padding: 4px 12px;
+  min-height: 32px;
+  padding: 4px 10px;
   margin-left: 6px;
-  font-size: 16px;
+  font-size: 12px;
 }
 
 /* 🧩 / 🎨 設定面板裡的兩排選項 */
@@ -699,15 +689,18 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   /* 標題列浮到左上角的空白區:兩顆鈕留著,只把標題文字讓掉。
      1113 v4.6:
      ① 版本鈕排在兩顆鈕的**下一行**(order + 100% 寬),不往右長 —— 往右長會蓋到棋盤左緣。
-     ② left 從 0 改成 60px(= 格線留白 4 + 托盤欄 52 + 間距 4):
-        原本標題列從最左邊開始,其實一直壓著「保留」那一格的上半部(0916 起就這樣,截圖看得出來)。
-        版本鈕再往下多一行就會整格蓋住 ⇒ 一起挪到托盤欄右邊的空白。 */
+        (1114 v4.7 版本鈕退回一般小字,這一行只有 18px 高,浮在空白處不吃棋盤)
+     ② left 從 0 改成 60px(托盤欄右邊):
+        原本標題列從最左邊開始,「← 大廳」整顆壓在「保留」那一格上
+        (1114 改前版實測 12×12 點陣被蓋 72/144;拖保留的方塊會按到回大廳)⇒ 1114 退回時留著。 */
   .app-header {
     position: absolute;
     top: var(--safe-top, 0px);
     left: 60px;
     z-index: 30;
-    width: 210px;
+    /* 1114 v4.7:210 → 180。暫停面板退回只蓋棋盤那一格(置中,左緣約在 x=250),
+       標題列再寬就會壓到面板左上角 */
+    width: 180px;
     max-width: calc(50vw - 110px);
     flex-wrap: wrap;
     justify-content: flex-start;
@@ -727,16 +720,15 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   }
 
   /* HUD 浮到右上角的空白區(它是看的、不是按的,擋不到操作)。
-     1113:字放大後改成兩排兩格;right 從 6px 改成 60px,不再壓到「下一個」那一格的標題。 */
+     right 從 6px 改成 60px(1113):原本壓在「下一個」那一格上(改前版實測被蓋 22/144)⇒ 1114 退回時留著。
+     1113 曾因字放大改成兩排兩格,1114 v4.7 字退回原本大小,回到一排四格。 */
   .hud-stack {
     position: absolute;
     top: 2px;
     right: 60px;
     z-index: 30;
-    width: auto;
-    max-width: calc(50vw - 110px);
+    width: min(260px, 34vw);
   }
-  .hud-stack .score-grid { grid-template-columns: repeat(2, max-content); }
 
   /* 托盤欄只有 52px 寬:「點一下轉向」的長字在橫向也收掉,只留 ⟳(說明在「怎麼玩」裡) */
   .hint-long { display: none; }
@@ -789,7 +781,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   display: block;
   width: calc(100% + 36px);
   margin: 14px -18px 0;
-  min-height: 56px;
+  min-height: 44px;
   font-size: 20px;
   font-weight: 700;
   color: #07111f;

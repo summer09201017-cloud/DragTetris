@@ -53,8 +53,9 @@
      ★ 版號和更新紀錄都只在 APP_VERSIONS 這一處，標題列那顆鈕（App.tsx）與設定面板都讀 window.__appVersion。
        舊版把版號寫死在徽章的 innerText，改版忘了改它就會默默漂移（畫面說 v1、程式已經是 v2）。
      ★ 本站沒有手寫 sw.js（vite-plugin-pwa 自動產，快取版本跟著檔案內容走）⇒ 改版時只要在 APP_VERSIONS 最前面插一筆。
-     ★ 1113 v4.6：右下角那顆 11px、十秒後變淡、點不到的徽章拿掉了，改成標題列裡一顆 ≥44px 的鈕
-       （src/version.test.ts 守 APP_VERSIONS 的格式、日期順序、版號不重複）。 -->
+     ★ 1113 v4.6：右下角那顆 11px、十秒後變淡、點不到的徽章拿掉了，改成標題列裡的版本鈕
+       （1114 v4.7 退回一般一行小字的大小；src/version.test.ts 守 APP_VERSIONS 的格式、日期順序、版號不重複）。
+     ★ 1114 v4.7：更新紀錄的字(18px)留著；框的大小與「關閉」鈕退回 1113 之前(使用者指示按鈕不用特別放大)。 -->
 <style>
   /* ★ hidden 屬性的 display:none 來自瀏覽器預設樣式表，inline style 會贏過它。
      不寫這一行的話，這層全螢幕遮罩從一開頁就蓋在上面、攒下所有點擊。
@@ -65,11 +66,11 @@
 <div id="appVerSheet" hidden
      style="position:fixed;inset:0;z-index:2147483001;background:rgba(4,8,20,.78);display:flex;align-items:center;justify-content:center;padding:16px;font-family:system-ui,'Noto Sans TC',sans-serif">
   <div role="dialog" aria-modal="true" aria-labelledby="appVerTitle"
-       style="max-width:480px;width:100%;max-height:calc(100dvh - 32px);overflow:auto;background:#1a2247;border:1px solid #2a356b;border-radius:12px;padding:16px 18px;color:#e6eaff">
+       style="max-width:420px;width:100%;max-height:70vh;overflow:auto;background:#1a2247;border:1px solid #2a356b;border-radius:12px;padding:14px 16px;color:#e6eaff">
     <h3 id="appVerTitle" style="margin:0 0 10px;font-size:22px">更新紀錄</h3>
     <ol id="appVerList" style="margin:0;padding-left:22px;font-size:18px;line-height:1.7"></ol>
     <button type="button" id="appVerClose"
-            style="margin-top:14px;width:100%;min-height:52px;font:inherit;font-size:18px;color:#e6eaff;background:#2a356b;border:1px solid #3a4a8b;border-radius:10px;cursor:pointer">關閉</button>
+            style="margin-top:12px;width:100%;min-height:40px;font:inherit;color:#e6eaff;background:#2a356b;border:1px solid #3a4a8b;border-radius:8px;cursor:pointer">關閉</button>
   </div>
 </div>
 <script>
@@ -77,6 +78,7 @@
   // 最新的放最前面。改版只要在這裡插一筆，標題列的版本鈕與設定面板會自己跟上。
   // ★ 每一條都寫給會眾看的白話：不寫檔名、程式名、px、百分比量測（src/version.test.ts 會擋）。
   var APP_VERSIONS = [
+    { v: 'v4.7', d: '2026-11-14', t: '按鈕和排法改回原本的樣子（上一版放大的按鈕、手機橫放時分數排成兩排、暫停畫面蓋住整個螢幕，都退回去了），棋盤又變回原本那麼大；分數格的字也改回原本大小；說明、設定裡的大字、中文名稱、「怎麼玩」說明卡、重新開始前先問一聲、畫面上方的版本與更新紀錄都留著。' },
     { v: 'v4.6', d: '2026-11-13', t: '字更大、按鈕更好按：第一次打開會先看到一張「怎麼玩」說明卡（之後可以從「設定」再叫出來，看說明時遊戲會先停住）；分數、保留、下一個這些字都改成中文並放大；下排按鈕底下加了「左轉、落底、右轉、加速」小字；玩到一半按「重新開始」會先問一聲，免得不小心把這局分數洗掉；畫面最上面就看得到版本，點一下打開更新紀錄。' },
     { v: 'v4.5', d: '2026-10-13', t: '👍 可以按讚、留言了——開始畫面多一顆「💬 按讚・留言」(平常收起來,點開才展開),一局結束的畫面也有一份,兩邊按一次就算數。按讚每台裝置一次;留言有兩種:點短語(👍 好聽、🙏 感動、🕊️ 平安、😊 太好玩了、💪 想再玩一次、❤️ 我喜歡,可以一次點好幾句)送出,馬上就會出現,畫面上會顯示每一句被選了幾次;也可以自己打字(暱稱可不填),審核通過後才會出現(電話、Email 這類個人資料會被擋下來)。' },
     { v: 'v4.4', d: '2026-09-21', t: '碰方塊不會再變快往下掉：原本手指或滑鼠往下拖一點點，方塊就會加速往下掉，左右移動時很容易誤觸；現在要加速請按下排的 ▼ 鈕（鍵盤是 ↓），很快往下一滑仍然可以讓方塊直接落到底' },

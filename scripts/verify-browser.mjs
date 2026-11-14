@@ -119,7 +119,7 @@ async function main() {
     const y1 = await p0.evaluate(() => ({ s: window.__state?.status, y: window.__state?.current?.y }));
     check('說明卡開著時對局是暫停的、方塊沒有在背後往下掉', y0.s === 'paused' && y1.s === 'paused' && y0.y === y1.y, `${JSON.stringify(y0)} → ${JSON.stringify(y1)}`);
     const startBox = await p0.locator('.intro-start').boundingBox();
-    check('「開始玩」鈕 ≥48px 高', startBox != null && startBox.height >= 48, startBox ? `${Math.round(startBox.height)}px` : 'null');
+    check('「開始玩」鈕 ≥44px 高(1114 從 56 降回本站一般的 44)', startBox != null && startBox.height >= 44, startBox ? `${Math.round(startBox.height)}px` : 'null');
     await p0.locator('.intro-start').click();
     await p0.waitForTimeout(300);
     check('按「開始玩」之後說明卡關掉', await p0.locator('.intro-card').count() === 0);
@@ -418,7 +418,9 @@ async function main() {
       const r = b.getBoundingClientRect();
       return { h: r.height, fs: parseFloat(getComputedStyle(b).fontSize), inView: r.top >= 0 && r.bottom <= innerHeight };
     });
-    check(`${tag} 版本鈕看得到、≥44px 高、字 ≥16px`, ver != null && ver.inView && ver.h >= 44 && ver.fs >= 16, JSON.stringify(ver));
+    // 1114 v4.7:使用者指示「按鈕不用特別放大」⇒ 版本鈕是一般小字,不准再被拉回 1113 的 48px 大鈕
+    //   (直向一行約 18px;橫向浮在空白處、折兩行約 33px)。
+    check(`${tag} 版本鈕看得到、是一般小字(不是 1113 的 48px 大鈕)`, ver != null && ver.inView && ver.h <= 36 && ver.fs <= 13, JSON.stringify(ver));
     if (box && ver) {
       const verBox = await page.locator('.ver-btn').boundingBox();
       const overlapsBoard = verBox && !(verBox.x + verBox.width <= box.x || box.x + box.width <= verBox.x
@@ -513,7 +515,7 @@ async function main() {
   check('橫向時關閉鈕就在畫面裡(不必捲兩個畫面)',
     closeBox != null && closeBox.y >= 0 && closeBox.y + closeBox.height <= 390,
     closeBox ? `y=${Math.round(closeBox.y)} h=${Math.round(closeBox.height)}` : 'null');
-  check('關閉鈕夠大', closeBox != null && closeBox.width >= 48 && closeBox.height >= 48,
+  check('關閉鈕夠大(44px,1114 退回 1113 之前的大小)', closeBox != null && closeBox.width >= 44 && closeBox.height >= 44,
     closeBox ? `${Math.round(closeBox.width)}x${Math.round(closeBox.height)}` : 'null');
   const ownsClose = await page.evaluate(() => {
     const el = document.querySelector('.settings-close');
@@ -530,11 +532,12 @@ async function main() {
     const bad = [];
     document.querySelectorAll('.side-controls button').forEach((b) => {
       const r = b.getBoundingClientRect();
-      if (r.height < 48) bad.push(`${b.textContent.trim()}=${Math.round(r.height)}px`);
+      if (r.height < 44 || r.height > 46) bad.push(`${b.textContent.trim()}=${Math.round(r.height)}px`);
     });
     return bad;
   });
-  check('側邊控制鈕都 ≥48px(0916 體檢是 30px,1113 長輩友善再拉到 48)', smallButtons.length === 0, smallButtons.join('/'));
+  // 0916 體檢是 30px → 拉到 44;1113 曾再拉到 48,1114 v4.7 使用者指示退回 ⇒ 守「44 不縮、也不要再放大」
+  check('側邊控制鈕都是 44px(不小於觸控下限、也不回到 1113 的 48px)', smallButtons.length === 0, smallButtons.join('/'));
 
   // ⚠ 橫向的棋盤本來就窄:8×20 的盤寬高比 0.4,受限的是**高度**不是欄寬
   //   (844×390 上就算把整個畫面高度都給它也只能到 156px 寬)。
