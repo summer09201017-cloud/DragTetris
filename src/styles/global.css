@@ -395,8 +395,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   text-align: center;
 }
 /* 1113 曾把標籤 8 → 14px、數字 14 → 18px、格子加寬;1114 v4.7 退回原本大小(遊戲畫面不擠優先)。
-   標籤的中文字(分數/最高/等級/行數)留著。 */
-.score-cell .label { color: var(--text-dim); font-size: 8px; letter-spacing: .5px; text-transform: uppercase; }
+   標籤的中文字(分數/最高/等級/行數)留著。
+   1115 v4.8:使用者看過說明後拍板「方塊放大」= 只把這四個小標 8 → 14px(看得清楚,這一排變高約 6px);
+   數字(.value 14px)、格子寬度與其他 HUD 都不動。 */
+.score-cell .label { color: var(--text-dim); font-size: 14px; letter-spacing: .5px; text-transform: uppercase; }
 .score-cell .value { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .touch-pad {
